@@ -20,9 +20,10 @@ function some_func($access_token, $access_token_secret,
 # Make sure server config exists. Use sample to for a
 # quick start.
 
-if (!is_file('config.json'))
+$confl = __DIR__ . '/config.json';
+if (!is_file($confl))
 	die("Config not found.");
-$config = json_decode(file_get_contens('config.json'));
+$config = json_decode(file_get_contents($confl));
 
 # NOTE: Make sure callback URLs in the configuration and on
 # remote server match.
@@ -37,8 +38,8 @@ $oauth->oauth_add_service(
 # OAuth2.0, e.g. Google
 $s20 = $config[1];
 $oauth->oauth_add_service(
-	$t10[0], $t10[1], $t10[2], $t10[3], $t10[4],
-	$t10[5], $t10[6], $t10[7], $t10[8], $t10[9]
+	$s20[0], $s20[1], $s20[2], $s20[3], $s20[4],
+	$s20[5], $s20[6], $s20[7], $s20[8], $s20[9]
 );
 
 $oauth::$core->route('/', function($args) use($oauth) {
