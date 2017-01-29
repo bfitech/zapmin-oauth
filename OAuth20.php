@@ -3,7 +3,7 @@
 
 namespace BFITech\ZapOAuth;
 
-use BFITech\OAuthCommon;
+#use BFITech\ZapOAuth as zo;
 
 
 class OAuth20Permission extends OAuthCommon {
@@ -42,10 +42,12 @@ class OAuth20Permission extends OAuthCommon {
 		# Redirect_uri must be underneath callback_uri on github, but can
 		# be anything, even multiple or google; defaults to
 		# $this->callback_uri
+
+		$url = $this->url_request_token_auth;
 		$params = [
 			'client_id' => $this->client_id,
 			'scope' => $this->scope,
-			'state' => self::gen_nonce(),
+			'state' => self::generate_nonce(),
 			'redirect_uri' => $this->callback_uri,
 			'response_type' => 'code',
 		];
@@ -64,12 +66,11 @@ class OAuth20Permission extends OAuthCommon {
 	 *     if left null.
 	 * @return array [errno, body] where errno == 0 on success.
 	 */
-	public function site_callback($args, $redirect_uri=null) {
-		if (!$redirect_uri)
-			$redirect_uri = $this->callback_uri;
+	public function site_callback($args) {
+		$redirect_uri = $this->callback_uri;
 
 		$get = $args['get'];
-		if (!self::check_dict(['code', 'state'], $get))
+		if (!self::check_dict($get, ['code', 'state']))
 			# We only check 'state' existence. We don't actually
 			# match it with previously-generated one in auth page.
 			return [2];
@@ -103,12 +104,11 @@ class OAuth20Permission extends OAuthCommon {
 			'code' => $code,
 			'redirect_uri' => $redirect_uri,
 			'grant_type' => 'authorization_code',
-			'state' => self::gen_nonce(),
+			'state' => self::generate_nonce(),
 		];
 
 		$resp = self::http_client(
-			'POST', $this->url_access_token,
-			$headers, $post, [], true, true);
+			'POST', $url, $headers, [], $post, false, true);
 		if ($resp[0] !== 200)
 			return [3];
 

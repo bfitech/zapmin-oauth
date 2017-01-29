@@ -3,49 +3,44 @@
 
 namespace BFITech\ZapOAuth;
 
-use GuzzleHTTP\Client;
-
 
 class OAuthCommon {
 
 	public static function http_client(
-		$method, $url, $headers=[], $get=[], $post=[],
-		$is_multipart=false, $expect_json=false
+		$method, $url, $headers=[], $get=[], $post=[], $expect_json=false
 	) {
-		$client = new Client([
-			'timeout' => 5,
-		]);
+		$conn = curl_init();
+		curl_setopt($conn, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($conn, CURLOPT_SSL_VERIFYPEER, false);
+		curl_setopt($conn, CURLOPT_CONNECTTIMEOUT, 16);
+		curl_setopt($conn, CURLOPT_TIMEOUT, 16);
+		curl_setopt($conn, CURLOPT_FOLLOWLOCATION, true);
+		curl_setopt($conn, CURLOPT_MAXREDIRS, 8);
+		curl_setopt($conn, CURLOPT_HEADER, false);
+		curl_setopt($conn, CURLOPT_HTTPHEADER, $headers);
+
+		if ($get) {
+			$url .= strpos($url, '?') !== false ? '&' : '?';
+			$url .= http_build_query($get);
+		}
+		curl_setopt($conn, CURLOPT_URL, $url);
+
 		if ($method == 'GET') {
-			$response = $client->requet('GET', $url, [
-				'http_errors' => false,
-				'headers' => $headers,
-				'query' => $get,
-			]);
+			# noop
 		} elseif ($method == 'POST') {
-			if ($get) {
-				$url += strpos($url, '?') !== false ? '&' : '?';
-				$url += http_build_query($get);
-			}
-			$post_key = $is_multipart ? 'multipart' : 'form_params';
-			$response = $client->requet('POST', $url, [
-				'http_errors' => false,
-				'headers' => $headers,
-				$post_key => $post,
-			]);
+			curl_setopt($conn, CURLOPT_CUSTOMREQUEST, 'POST');
+			curl_setopt($conn, CURLOPT_POSTFIELDS, http_build_query($post));
 		} else {
+			# only GET and POST for now
 			return [-1, null];
 		}
-		return self::format_response($response);
-	}
 
-	public static function format_response(
-		$response, $expect_json=true
-	) {
-		$code = $response->getStatusCode();
-		$body = (string)$response->getBody(); 
+		$body = curl_exec($conn);
+		$info = curl_getinfo($conn);
+		curl_close($conn);
 		if ($expect_json)
-			$body = json_decode($body, true);
-		return [$code, $body];
+			$body = @json_decode($body, true);
+		return [$info['http_code'], $body];
 	}
 
 	public static function check_dict($array, $keys) {

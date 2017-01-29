@@ -3,8 +3,6 @@
 
 namespace BFITech\ZapOAuth;
 
-use BFITech\OAuthCommon;
-
 
 class OAuth10Permission extends OAuthCommon {
 
@@ -44,8 +42,8 @@ class OAuth10Permission extends OAuthCommon {
 	) {
 		$params = [
 			'oauth_version' => '1.0',
-			'oauth_nonce' => self::gen_nonce(),
-			'oauth_timestamp' => self::gen_timestamp(),
+			'oauth_nonce' => self::generate_nonce(),
+			'oauth_timestamp' => self::generate_timestamp(),
 			'oauth_consumer_key' => $this->consumer_key,
 			'oauth_signature_method' => 'HMAC-SHA1',
 		];
@@ -74,13 +72,12 @@ class OAuth10Permission extends OAuthCommon {
 
 		/* signing */
 
-		// signing key
+		# signing key
 		$skey = rawurlencode($this->consumer_secret) . '&';
-		if ($with_token_secret)
+		if ($with_token_secret !== null)
 			// blank for request token
 			$skey .= rawurlencode($with_token_secret);
-
-		// signature
+		# signature
 		$signature = rawurlencode(base64_encode(
 			hash_hmac('sha1', $bstr, $skey, true)));
 		$params['oauth_signature'] = $signature;
@@ -128,12 +125,12 @@ class OAuth10Permission extends OAuthCommon {
 		if ($resp[0] !== 200)
 			return false;
 
-		parse_str($ret[1], $args);
-		if (!self::check_dict([
+		parse_str($resp[1], $args);
+		if (!self::check_dict($args, [
 			'oauth_token',
 			'oauth_token_secret',
 			'oauth_callback_confirmed'
-		], $args))
+		]))
 			return false;
 		if ($args['oauth_callback_confirmed'] != 'true')
 			return false;
@@ -155,7 +152,8 @@ class OAuth10Permission extends OAuthCommon {
 		return sprintf(
 			'%s?oauth_token=%s',
 			$this->url_request_token_auth,
-			rawurlencode($oauth_request_token));
+			rawurlencode($oauth_request_token)
+		);
 	}
 
 	/**
@@ -196,10 +194,10 @@ class OAuth10Permission extends OAuthCommon {
 
 		$get = $args['get'];
 
-		if (!self::check_dict([
+		if (!self::check_dict($get, [
 			'oauth_token',
 			'oauth_verifier'
-		], $get))
+		]))
 			return [2];
 		extract($get, EXTR_SKIP);
 
@@ -208,14 +206,15 @@ class OAuth10Permission extends OAuthCommon {
 			['oauth_token' => $oauth_token]
 		);
 		$headers = [
-			#'Content-Type: application/x-www-form-urlencoded',
+			'Content-Type: application/x-www-form-urlencoded',
 			'Authorization: ' . $auth_header,
 			'Expect: ',
 		];
 
-		$post_data = http_build_query([
-			'oauth_verifier' => $oauth_verifier,  # required by 1.0a
-		]);
+		$post_data = [
+			# required by 1.0a
+			'oauth_verifier' => $oauth_verifier,
+		];
 		$resp = self::http_client(
 			'POST', $this->url_access_token,
 			$headers, [], $post_data);
@@ -224,10 +223,10 @@ class OAuth10Permission extends OAuthCommon {
 			return [3];
 
 		parse_str($resp[1], $args);
-		if (false === $args = self::check_dict([
+		if (false === $args = self::check_dict($args, [
 			'oauth_token',
 			'oauth_token_secret',
-		], $args))
+		]))
 			return [4];
 
 		# save these two for later actions
@@ -236,7 +235,6 @@ class OAuth10Permission extends OAuthCommon {
 			'access_token_secret' => $args['oauth_token_secret'],
 		]];
 	}
-
 }
 
 class OAuth10Action extends OAuth10Permission {

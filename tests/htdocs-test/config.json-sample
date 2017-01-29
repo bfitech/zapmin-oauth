@@ -1,0 +1,26 @@
+[
+  [
+    "XXXXXXXXXXXXXXXXXXX333",
+    "yyyyyyyyyyyyyyyyyyqqqqqqqqqqqqqqqqqqqqqqq",
+    "twitter",
+    "10",
+    "https://api.twitter.com/oauth/request_token",
+    "https://api.twitter.com/oauth/authenticate",
+    "https://api.twitter.com/oauth/access_token",
+    null,
+    "some_func",
+    "http://example.org/byway/oauth/10/twitter/callback"
+  ],
+  [
+    "99999999999-uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu.apps.googleusercontent.com",
+    "EEEEEEE_TTTTT_rrrrrrrrrr",
+    "google",
+    "20",
+    null,
+    "https://accounts.google.com/o/oauth2/auth",
+    "https://www.googleapis.com/oauth2/v3/token",
+    "profile",
+    "some_func",
+    "http://example.org/byway/oauth/20/google/callback"
+  ]
+]

@@ -7,4 +7,6 @@
 *.bak
 
 /vendor/
+/tests/htdocs-test/bower_components/
+/tests/htdocs-test/config.json
 

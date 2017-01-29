@@ -29,8 +29,8 @@
   "minimum-stability": "dev",
   "require": {
     "php": ">=5.4.0",
-    "bfitech/zapmin": "dev-master",
-    "guzzlehttp/guzzle": "6.*"
+    "ext-curl": "*",
+    "bfitech/zapmin": "dev-master"
   },
   "autoload": {
     "psr-4": {
