@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "content-hash": "1bb8723c3238962aa5aef803fe21a09b",
+    "content-hash": "1dd884e089a24b3ada73ca65a6227e69",
     "packages": [
         {
             "name": "bfitech/zapcore",
@@ -12,15 +12,21 @@
             "source": {
                 "type": "git",
                 "url": "git@bfinews.com:bfin/zapcore.git",
-                "reference": "e9ec6b09f4aa01dc1a9260c2d9e25a9ae0b8ca25"
+                "reference": "68a652554f0f264b4bd225de703ffc1866744b24"
             },
             "require": {
+                "ext-curl": "*",
                 "php": ">=5.4.0"
             },
             "type": "library",
             "autoload": {
                 "psr-4": {
                     "BFITech\\ZapCore\\": ""
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "BFITech\\ZapCoreDev\\": ""
                 }
             },
             "license": [
@@ -32,8 +38,8 @@
                     "email": "rs@cogsci.bandungfe.net"
                 }
             ],
-            "description": "A very simple router.",
-            "time": "2017-01-29 03:01:46"
+            "description": "A very simple router and other utils.",
+            "time": "2017-01-30 12:26:08"
         },
         {
             "name": "bfitech/zapmin",
@@ -41,7 +47,7 @@
             "source": {
                 "type": "git",
                 "url": "git@bfinews.com:bfin/zapmin.git",
-                "reference": "442d4be4f1157eb28119271a2199d641cc06a92e"
+                "reference": "f378becbf4ab37c53e1381cf5d47a2462b63f84f"
             },
             "require": {
                 "bfitech/zapcore": "dev-master",
@@ -57,6 +63,11 @@
                     "BFITech\\ZapAdmin\\": ""
                 }
             },
+            "autoload-dev": {
+                "psr-4": {
+                    "BFITech\\ZapCoreDev\\": ""
+                }
+            },
             "license": [
                 "MIT"
             ],
@@ -67,7 +78,7 @@
                 }
             ],
             "description": "A simple authentication manager.",
-            "time": "2017-01-25 17:48:40"
+            "time": "2017-01-30 12:46:04"
         },
         {
             "name": "bfitech/zapstore",
@@ -108,8 +119,7 @@
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
-        "php": ">=5.4.0",
-        "ext-curl": "*"
+        "php": ">=5.4.0"
     },
     "platform-dev": []
 }

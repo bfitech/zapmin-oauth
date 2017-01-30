@@ -3,7 +3,7 @@
 
 namespace BFITech\ZapOAuth;
 
-#use BFITech\ZapOAuth as zo;
+use BFITech\ZapCore as zc;
 
 
 class OAuth20Permission extends OAuthCommon {
@@ -70,7 +70,7 @@ class OAuth20Permission extends OAuthCommon {
 		$redirect_uri = $this->callback_uri;
 
 		$get = $args['get'];
-		if (!self::check_dict($get, ['code', 'state']))
+		if (!zc\Common::check_dict($get, ['code', 'state']))
 			# We only check 'state' existence. We don't actually
 			# match it with previously-generated one in auth page.
 			return [2];
@@ -107,8 +107,13 @@ class OAuth20Permission extends OAuthCommon {
 			'state' => self::generate_nonce(),
 		];
 
-		$resp = self::http_client(
-			'POST', $url, $headers, [], $post, false, true);
+		$resp = zc\Common::http_client([
+			'url' => $url,
+			'method' => 'POST',
+			'headers' => $headers,
+			'post' => $post,
+			'expect_json' => true
+		]);
 		if ($resp[0] !== 200)
 			return [3];
 
@@ -119,7 +124,7 @@ class OAuth20Permission extends OAuthCommon {
 		# Services may add various additional values, e.g. normalized
 		# scope for Github, expires_in on Google, etc. We'll only
 		# check these.
-		$checked = self::check_dict($resp[1], ['access_token']);
+		$checked = zc\Common::check_dict($resp[1], ['access_token']);
 		if (!$checked)
 			return [4];
 
@@ -146,7 +151,7 @@ class OAuth20Action {
 	 */
 	public static function request(
 		$access_token, $method, $url, $headers=[], $get=[], $post=[],
-		$is_multipart=false, $expect_json=false
+		$expect_json=false
 	) {
 		$headers = [
 			'Accept: application/json',
@@ -155,8 +160,8 @@ class OAuth20Action {
 		# github style, only github accepts this
 		// $headers[] = sprintf('Authorization: token %s', $access_token);
 		$get[] = ['access_token' => $access_token];
-		return self::http_client($method, $url, $headers, $get, $post,
-			$is_multipart, $expect_json);
+		return zc\Common::http_client($url, $method, $headers,
+			$get, $post, $expect_json);
 	}
 }
 

@@ -3,6 +3,8 @@
 
 namespace BFITech\ZapOAuth;
 
+use BFITech\ZapCore as zc;
+
 
 class OAuth10Permission extends OAuthCommon {
 
@@ -120,13 +122,16 @@ class OAuth10Permission extends OAuthCommon {
 			'Expect: ',
 		];
 
-		$resp = self::http_client(
-			'POST', $this->url_request_token, $headers);
+		$resp = zc\Common::http_client([
+			'url' => $this->url_request_token,
+			'method' => 'POST',
+			'headers' => $headers
+		]);
 		if ($resp[0] !== 200)
 			return false;
 
 		parse_str($resp[1], $args);
-		if (!self::check_dict($args, [
+		if (!zc\Common::check_dict($args, [
 			'oauth_token',
 			'oauth_token_secret',
 			'oauth_callback_confirmed'
@@ -194,7 +199,7 @@ class OAuth10Permission extends OAuthCommon {
 
 		$get = $args['get'];
 
-		if (!self::check_dict($get, [
+		if (!zc\Common::check_dict($get, [
 			'oauth_token',
 			'oauth_verifier'
 		]))
@@ -215,15 +220,18 @@ class OAuth10Permission extends OAuthCommon {
 			# required by 1.0a
 			'oauth_verifier' => $oauth_verifier,
 		];
-		$resp = self::http_client(
-			'POST', $this->url_access_token,
-			$headers, [], $post_data);
+		$resp = zc\Common::http_client([
+			'url' => $this->url_access_token,
+			'method' => 'POST',
+			'headers' => $headers,
+			'post' => $post_data
+		]);
 
 		if ($resp[0] !== 200)
 			return [3];
 
 		parse_str($resp[1], $args);
-		if (false === $args = self::check_dict($args, [
+		if (false === $args = zc\Common::check_dict($args, [
 			'oauth_token',
 			'oauth_token_secret',
 		]))
@@ -262,7 +270,7 @@ class OAuth10Action extends OAuth10Permission {
 	public function request(
 		$access_token, $access_token_secret, $method, $url,
 		$headers=[], $get=[], $post=[],
-		$is_multipart=false, $expect_json=false
+		$expect_json=false
 	) {
 		$auth_header = $this->generate_auth_header(
 			$url, $method, ['oauth_token' => $access_token],
@@ -270,8 +278,8 @@ class OAuth10Action extends OAuth10Permission {
 		$headers[] = "Authorization: " . $auth_header;
 		$headers[] = "Expect: ";
 
-		return self::http_client($method, $url, $headers, $get, $post,
-			$is_multipart, $expect_json);
+		return zc\Common::http_client($url, $method, $headers,
+			$get, $post, $expect_json);
 	}
 
 }
