@@ -11,7 +11,7 @@ function some_func($_oauth) {
 	return ['uname' => 'tester'];
 }
 
-$oauth = new zo\OAuthRouteDefault(null, null, [
+$oauth = new zo\OAuthRoute(null, null, [
 	'dbtype'=>'sqlite3',
 	'dbname' => '/mnt/ramdisk/zo.sq3',
 ], 3600, false, 'oauthtest');

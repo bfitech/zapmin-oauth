@@ -253,20 +253,7 @@ class OAuthRoute extends za\AdminRoute {
 		return null;
 	}
 
-	/**
-	 * @todo Move this to Common.
-	 */
-	protected function pj($retval, $forbidden_code=null) {
-		if (count($retval) < 2)
-			$retval[] = [];
-		$http_code = 200;
-		if ($retval[0] !== 0) {
-			$http_code = 401;
-			if ($forbidden_code)
-				$http_code = $forbidden_code;
-		}
-		self::$core->print_json($retval[0], $retval[1], $http_code);
-	}
+	# route handlers
 
 	/**
 	 * Route callback for OAuth* token request URL generator.
@@ -275,7 +262,7 @@ class OAuthRoute extends za\AdminRoute {
 	 *     'service_type' and 'service_name' in 'params' key. Failing
 	 *     to do so will throw exception.
 	 */
-	public function oauth_get_auth_url($args) {
+	public function route_byway_auth($args) {
 		$params = $args['params'];
 		if (!zc\Common::check_dict($params,
 			['service_name', 'service_type'])
@@ -288,13 +275,13 @@ class OAuthRoute extends za\AdminRoute {
 			$service_name, $service_type);
 		if (!$perm)
 			# service unknown
-			return $this->pj([2, 0], 404);
+			return zc\Header::pj([2, 0], 404);
 
 		$url = $perm->get_access_token_url();
 		if (!$url)
 			# access token url not obtained
-			return $this->pj([2, 1], 404);
-		return $this->pj([0, $url]);
+			return zc\Header::pj([2, 1], 404);
+		return zc\Header::pj([0, $url]);
 	}
 
 	/**
@@ -306,7 +293,7 @@ class OAuthRoute extends za\AdminRoute {
 	 * @param array $args HTTP variables. This must contain sub-keys:
 	 *     'service_type' and 'service_name' in 'params' key.
 	 */
-	public function oauth_callback_url($args) {
+	public function route_byway_callback($args) {
 		$params = $args['params'];
 		if (!zc\Common::check_dict($params,
 			['service_name', 'service_type'])
