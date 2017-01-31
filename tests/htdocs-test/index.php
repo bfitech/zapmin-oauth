@@ -6,16 +6,16 @@ require(__DIR__ . '/../../vendor/autoload.php');
 use BFITech\ZapOAuth as zo;
 
 
-$oauth = new zo\ZapOAuth(null, null, [
-	'dbtype'=>'sqlite3',
-	'dbname' => '/mnt/ramdisk/zo.sq3',
-], 3600);
-
-function some_func($access_token, $access_token_secret,
-	$conf, $oauth) {
+function some_func($_oauth) {
 	# dummy profile retriever
 	return ['uname' => 'tester'];
 }
+
+$oauth = new zo\OAuthRouteDefault(null, null, [
+	'dbtype'=>'sqlite3',
+	'dbname' => '/mnt/ramdisk/zo.sq3',
+], 3600, false, 'oauthtest');
+
 
 # Make sure server config exists. Use sample to for a
 # quick start.
@@ -42,10 +42,14 @@ $oauth->oauth_add_service(
 	$s20[5], $s20[6], $s20[7], $s20[8], $s20[9]
 );
 
-$oauth::$core->route('/', function($args) use($oauth) {
+$oauth->route('/', function($args) use($oauth) {
 	require('home.php');
 	die();
 });
-
-$oauth->process_routes();
+$oauth->route('/status', [$oauth, 'route_status'], 'GET');
+$oauth->route('/logout', [$oauth, 'route_logout'], ['GET', 'POST']);
+$oauth->route('/byway/oauth/<service_type>/<service_name>/auth',
+	[$oauth, 'route_byway_auth'], 'POST');
+$oauth->route('/byway/oauth/<service_type>/<service_name>/callback',
+	[$oauth, 'route_byway_callback'], 'GET');
 

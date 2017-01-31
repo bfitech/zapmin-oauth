@@ -95,7 +95,7 @@ class OAuth20Permission extends OAuthCommon {
 		# OAuth2.0 must use application/x-www-form-urlencoded. Github
 		# accepts multipart/form-data, but Google doesn't. Hence
 		# CURLOPT_POSTFIELDS must use http_build_query() instead of
-		# plain array. Guzzle wrapper already handles this.
+		# plain array.
 		# See: http://stackoverflow.com/a/29570240
 
 		$post = [
@@ -121,11 +121,10 @@ class OAuth20Permission extends OAuthCommon {
 		if (strstr($url, 'microsoftonline') !== false)
 			return [0, $ret];
 
-		# Services may add various additional values, e.g. normalized
-		# scope for Github, refresh_token on Google, etc. We'll only
-		# check these.
-		$checked = zc\Common::check_dict($resp[1], ['access_token']);
-		if (!$checked)
+		# OAuth2.0 may send 'refresh_token' key. Every services may
+		# add various additional values, e.g. normalized scope for
+		# Github. We'll only check 'access_token'.
+		if (!zc\Common::check_dict($resp[1], ['access_token']))
 			return [4];
 
 		# Store 'access_token' for later API calls.
@@ -201,12 +200,21 @@ class OAuth20Action {
 
 	/**
 	 * Refresh token.
+	 *
+	 * @param bool $expect_json Whether JSON response is to be
+	 *     expected.
+	 * @todo Untested.
 	 */
-	public static function refresh() {
+	public static function refresh($expect_json) {
 		if (!$this->refresh_token || !$this->url_request_token_auth)
 			return null;
 
-		$headers = ['Content-Type' => 'application/x-www-form-urlencoded'];
+		$headers = ['Content-Type: application/x-www-form-urlencoded'];
+		if ($expect_json) {
+			$headers[] = 'Accept: application/json';
+			$headers[] = 'Expect: ';
+		}
+
 		$post_data = [
 			'client_id' => $this->consumer_key,
 			'client_secret' => $this->consumer_secret,

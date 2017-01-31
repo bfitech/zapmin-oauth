@@ -3,6 +3,7 @@
 
 namespace BFITech\ZapOAuth;
 
+use BFITech\ZapCore as zc;
 use BFITech\ZapAdmin as za;
 
 
@@ -18,6 +19,11 @@ class OAuthRoute extends za\AdminRoute {
 	 */
 	private $oauth_service_configs = [];
 
+	# tokens
+	private $access_token = null;
+	private $access_token_secret = null;  # OAuth1.0 only
+	private $refresh_token = null;        # OAuth2.0 only
+
 	/**
 	 * Constructor.
 	 *
@@ -29,8 +35,10 @@ class OAuthRoute extends za\AdminRoute {
 		$token_name=null, $route_prefix=null
 	) {
 		parent::__construct($home, $host,
-			$dbargs, $expiration, $create_table,
+			$dbargs, $expiration, $force_create_table,
 			$token_name, $route_prefix);
+
+		$this->oauth_create_table($force_create_table);
 	}
 
 	/**
@@ -40,10 +48,10 @@ class OAuthRoute extends za\AdminRoute {
 	 * self::$store->status(). This is to retrieve OAuth* tokens
 	 * and use them for request or refresh.
 	 */
-	private function create_table($force_create_table) {
-		$sql = self::$store->sql;
+	private function oauth_create_table($force_create_table) {
+		$sql = self::$store;
 		try {
-			$test = $sql->query("SELECT uid FROM udata LIMIT 1");
+			$test = $sql->query("SELECT aid FROM uoauth LIMIT 1");
 			if (!$force_create_table)
 				return;
 		} catch (\PDOException $e) {}
@@ -60,7 +68,7 @@ class OAuthRoute extends za\AdminRoute {
 		$index = $sql->stmt_fragment('index');
 		$engine = $sql->stmt_fragment('engine');
 		$expire = $sql->stmt_fragment(
-			'datetime', ['delta' => $this->expiration]);
+			'datetime', ['delta' => $this->get_expiration()]);
 
 		# Each row is associated with a session.sid. Associate the
 		# two tables with self::$store->status() return value.
@@ -79,7 +87,7 @@ class OAuthRoute extends za\AdminRoute {
 				"Cannot create uoauth table:" . $sql->errmsg);
 
 		$oauth_session_view = (
-			"CREATE VIEW v_oauth AS" .
+			"CREATE VIEW v_uoauth AS" .
 			"  SELECT" .
 			"    uoauth.*," .
 			"    usess.token," .
@@ -99,7 +107,7 @@ class OAuthRoute extends za\AdminRoute {
 	 * @param string $session_token Session token.
 	 */
 	public function get_oauth_tokens($session_token) {
-		$sql = self::$store->sql;
+		$sql = self::$store;
 		$dtnow = $sql->stmt_fragment('datetime');
 		$stmt = (
 			"SELECT otype, access, access_secret, refresh " .
@@ -149,7 +157,7 @@ class OAuthRoute extends za\AdminRoute {
 				$service_type));
 
 		$key = $service_name . '-' . $service_type;
-		if (isset($this->service_configs[$key]))
+		if (isset($this->oauth_service_configs[$key]))
 			return false;
 
 		if (!$url_callback) {
@@ -186,13 +194,13 @@ class OAuthRoute extends za\AdminRoute {
 			return null;
 		$conf = $this->oauth_service_configs[$key];
 		extract($conf, EXTR_SKIP);
-		if ($key == '10') {
+		if ($service_type == '10') {
 			return new OAuth10Permission(
 				$consumer_key, $consumer_secret,
 				$url_request_token, $url_request_token_auth,
 				$url_access_token, $url_callback
 			);
-		} elseif ($key == '20') {
+		} elseif ($service_type == '20') {
 			return new OAuth20Permission(
 				$consumer_key, $consumer_secret,
 				$url_request_token_auth, $url_access_token,
@@ -230,12 +238,12 @@ class OAuthRoute extends za\AdminRoute {
 			return null;
 		$conf = $this->oauth_service_configs[$key];
 		extract($conf, EXTR_SKIP);
-		if ($key == '10') {
+		if ($service_type == '10') {
 			return new OAuth10Action(
 				$conf['consumer_key'], $conf['consumer_secret'],
 				$access_token, $access_token_secret
 			);
-		} elseif ($key == '20') {
+		} elseif ($service_type == '20') {
 			return new OAuth10Action(
 				$conf['consumer_key'], $conf['consumer_secret'],
 				$access_token, $refresh_token,
@@ -243,6 +251,21 @@ class OAuthRoute extends za\AdminRoute {
 			);
 		}
 		return null;
+	}
+
+	/**
+	 * @todo Move this to Common.
+	 */
+	protected function pj($retval, $forbidden_code=null) {
+		if (count($retval) < 2)
+			$retval[] = [];
+		$http_code = 200;
+		if ($retval[0] !== 0) {
+			$http_code = 401;
+			if ($forbidden_code)
+				$http_code = $forbidden_code;
+		}
+		self::$core->print_json($retval[0], $retval[1], $http_code);
 	}
 
 	/**
@@ -254,24 +277,24 @@ class OAuthRoute extends za\AdminRoute {
 	 */
 	public function oauth_get_auth_url($args) {
 		$params = $args['params'];
+		if (!zc\Common::check_dict($params,
+			['service_name', 'service_type'])
+		) {
+			throw new OAuthError("Invalid path params.");
+		}
 		extract($params, EXTR_SKIP);
 
-		if (!self::$core->check_dict(
-			$params, ['service_name', 'service_key'])
-		)
-			throw new OAuthError("Invalid path params.");
-
 		$perm = $this->oauth_get_permission_instance(
-			$service_name, $service_key);
+			$service_name, $service_type);
 		if (!$perm)
 			# service unknown
-			return $this->_json([2, 0], 404);
+			return $this->pj([2, 0], 404);
 
 		$url = $perm->get_access_token_url();
 		if (!$url)
 			# access token url not obtained
-			return $this->_json([2, 1], 404);
-		return $this->_json([0, $url]);
+			return $this->pj([2, 1], 404);
+		return $this->pj([0, $url]);
 	}
 
 	/**
@@ -285,10 +308,21 @@ class OAuthRoute extends za\AdminRoute {
 	 */
 	public function oauth_callback_url($args) {
 		$params = $args['params'];
+		if (!zc\Common::check_dict($params,
+			['service_name', 'service_type'])
+		) {
+			throw new OAuthError("Invalid path params.");
+		}
 		extract($params, EXTR_SKIP);
 
+		$key = $service_name . '-' . $service_type;
+		if (!isset($this->oauth_service_configs[$key]))
+			# key invalid
+			return null;
+		$conf = $this->oauth_service_configs[$key];
+
 		$perm = $this->oauth_get_permission_instance(
-			$service_name, $service_key);
+			$service_name, $service_type);
 		if (!$perm)
 			# service unknown
 			return self::$core->abort(404);
@@ -307,11 +341,14 @@ class OAuthRoute extends za\AdminRoute {
 			# OAuth2.0 only
 			$refresh_token = null;
 
+		$this->access_token = $access_token;
+		$this->access_token_secret = $access_token_secret;
+		$this->refresh_token = $refresh_token;
+
 		# fetch profile, specific to each service
 
-		$cb_profile = $conf[$key]['callback_fetch_profile'];
-		$profile = $cb_profile($access_token, $access_token_secret,
-			$conf[$key], $this);
+		$cb_profile = $conf['callback_fetch_profile'];
+		$profile = $cb_profile($this);
 		if (!$profile)
 			# cannot fetch profile, most likely server error
 			return self::$core->abort(503);
@@ -339,7 +376,7 @@ class OAuthRoute extends za\AdminRoute {
 
 		# save to oauth table
 
-		$sql = self::$store->sql;
+		$sql = self::$store;
 		# $retval[1] currently doesn't have 'sid'. Query it first.
 		if (!isset($retval[1]['sid'])) {
 			$sid = $sql->query(
@@ -355,14 +392,14 @@ class OAuthRoute extends za\AdminRoute {
 			$ins['access_secret'] = $access_token_secret;
 		if ($refresh_token)
 			$ins['refresh'] = $refresh_token;
-		$sql->insert('oauth', $ins);
+		$sql->insert('uoauth', $ins);
 
 		# always autologin on success
 
 		/** @todo Parametrizable OAuth session duration. */
 		$this->set_user_token($session_token);
 		setcookie(
-			$this->get_token_name(), $token,
+			$this->get_token_name(), $session_token,
 			time() + (3600 * 24 * 7), '/');
 
 		# success, back home
