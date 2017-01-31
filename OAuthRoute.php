@@ -6,33 +6,109 @@ namespace BFITech\ZapOAuth;
 use BFITech\ZapAdmin as za;
 
 
-class ZapOAuthError extends \Exception {}
+class OAuthError extends \Exception {}
 
-class ZapOAuth extends za\AdminRouteDefault {
+class OAuthRoute extends za\AdminRoute {
 
+	/**
+	 * Service register.
+	 *
+	 * Services are stored in a dict with keys of the form:
+	 * $service_name . '-' . $service_type.
+	 */
 	private $oauth_service_configs = [];
 
+	/**
+	 * Constructor.
+	 *
+	 * This takes arguments exactly the same with parent class.
+	 */
 	public function __construct(
 		$home=null, $host=null,
-		$dbargs=[], $expiration=null, $create_table=false,
+		$dbargs=[], $expiration=null, $force_create_table=false,
 		$token_name=null, $route_prefix=null
 	) {
 		parent::__construct($home, $host,
 			$dbargs, $expiration, $create_table,
 			$token_name, $route_prefix);
+	}
 
-		# remove default _byway path
-		#$this->delete_route('/byway', ['GET', 'POST']);
+	/**
+	 * Create OAuth session table.
+	 *
+	 * This table is not for authentication since it's done by
+	 * self::$store->status(). This is to retrieve OAuth* tokens
+	 * and use them for request or refresh.
+	 */
+	private function create_table($force_create_table) {
+		$sql = self::$store->sql;
+		try {
+			$test = $sql->query("SELECT uid FROM udata LIMIT 1");
+			if (!$force_create_table)
+				return;
+		} catch (\PDOException $e) {}
 
-		# access token route
-		$this->add_route(
-			'/byway/oauth/<service_type>/<service_name>/auth',
-			[$this, 'oauth_get_auth_url'], 'POST');
+		foreach([
+			"DROP VIEW IF EXISTS v_uoauth;",
+			"DROP TABLE IF EXISTS uoauth;",
+		] as $drop) {
+			if (!$sql->query_raw($drop))
+				throw new za\AdminStoreError(
+					"Cannot drop data:" . $sql->errmsg);
+		}
 
-		# callback url route
-		$this->add_route(
-			'/byway/oauth/<service_type>/<service_name>/callback',
-			[$this, 'oauth_callback_url'], 'GET');
+		$index = $sql->stmt_fragment('index');
+		$engine = $sql->stmt_fragment('engine');
+		$expire = $sql->stmt_fragment(
+			'datetime', ['delta' => $this->expiration]);
+
+		# Each row is associated with a session.sid. Associate the
+		# two tables with self::$store->status() return value.
+		$oauth_table = (
+			"CREATE TABLE uoauth (" .
+			"  aid %s," .
+			"  sid INTEGER REFERENCES usess(sid) ON DELETE CASCADE," .
+			"  access TEXT," .
+			"  access_secret TEXT," .    # OAuth1.0 only
+			"  refresh TEXT" .           # OAuth2.0 only
+			") %s;"
+		);
+		$oauth_table = sprintf($oauth_table, $index, $engine);
+		if (!$sql->query_raw($oauth_table))
+			throw new za\AdminStoreError(
+				"Cannot create uoauth table:" . $sql->errmsg);
+
+		$oauth_session_view = (
+			"CREATE VIEW v_oauth AS" .
+			"  SELECT" .
+			"    uoauth.*," .
+			"    usess.token," .
+			"    usess.expire" .
+			"  FROM uoauth, usess" .
+			"  WHERE" .
+			"    uoauth.sid=usess.sid;"
+		);
+		if (!$sql->query_raw($oauth_session_view))
+			throw new AdminStoreError(
+				"Cannot create v_oauth view:" . $sql->errmsg);
+	}
+
+	/**
+	 * Get active OAuth* tokens given a session token.
+	 *
+	 * @param string $session_token Session token.
+	 */
+	public function get_oauth_tokens($session_token) {
+		$sql = self::$store->sql;
+		$dtnow = $sql->stmt_fragment('datetime');
+		$stmt = (
+			"SELECT otype, access, access_secret, refresh " .
+			"FROM v_oauth " .
+			"WHERE token=? AND expire>%s " .
+			"ORDER BY sid DESC LIMIT 1"
+		);
+		$stmt = sprintf($stmt, $dtnow);
+		return $sql->query($stmt, [$session_token]);
 	}
 
 	/**
@@ -56,8 +132,9 @@ class ZapOAuth extends za\AdminRouteDefault {
 	 *       use static method in it
 	 *     It must return an array that at least has one keys 'uname'.
 	 * @param string $url_callback Optional callback URL. If left null,
-	 *     the value will be inferred. Set this explicitly for testing
-	 *     with different URLs.
+	 *     the value will be inferred. Services usually require this
+	 *     to be explicitly set according to what you register in there,
+	 *     or else, they will return error at oauth_get_url().
 	 */
 	public function oauth_add_service(
 		$consumer_key, $consumer_secret,
@@ -67,7 +144,7 @@ class ZapOAuth extends za\AdminRouteDefault {
 		$url_callback=null
 	) {
 		if (!in_array($service_type, ['10', '20']))
-			throw new ZapOAuthError(sprintf(
+			throw new OAuthError(sprintf(
 				"Invalid service type: '%s'.",
 				$service_type));
 
@@ -76,6 +153,7 @@ class ZapOAuth extends za\AdminRouteDefault {
 			return false;
 
 		if (!$url_callback) {
+			# default callback URL
 			$url_callback = self::$core->get_host();
 			$url_callback .= sprintf(
 				'%sbyway/oauth/%s/%s/callback',
@@ -96,67 +174,125 @@ class ZapOAuth extends za\AdminRouteDefault {
 		];
 	}
 
-	private function oauth_get_10_instance($key) {
-		$conf = $this->oauth_service_configs[$key];
-		extract($conf, EXTR_SKIP);
-		return new OAuth10Permission(
-			$consumer_key, $consumer_secret,
-			$url_request_token, $url_request_token_auth,
-			$url_access_token, $url_callback
-		);
-	}
-
-	private function oauth_get_20_instance($key) {
-		$conf = $this->oauth_service_configs[$key];
-		extract($conf, EXTR_SKIP);
-		return new OAuth20Permission(
-			$consumer_key, $consumer_secret,
-			$url_request_token_auth, $url_access_token,
-			$url_callback, $scope
-		);
-	}
-
-	protected function oauth_get_auth_url($args) {
-		$params = $args['params'];
-		extract($params, EXTR_SKIP);
-
+	/**
+	 * Instantiate OAuth*Permission class.
+	 */
+	private function oauth_get_permission_instance(
+		$service_name, $service_type
+	) {
 		$key = $service_name . '-' . $service_type;
 		if (!isset($this->oauth_service_configs[$key]))
 			# key invalid
-			return $this->_json([2, 0], 404);
-
-		if ($service_type == '10') {
-			$perm = $this->oauth_get_10_instance($key);
-		} elseif ($service_type == '20') {
-			$perm = $this->oauth_get_20_instance($key);
-		} else {
-			return $this->_json([2, 1], 404);
+			return null;
+		$conf = $this->oauth_service_configs[$key];
+		extract($conf, EXTR_SKIP);
+		if ($key == '10') {
+			return new OAuth10Permission(
+				$consumer_key, $consumer_secret,
+				$url_request_token, $url_request_token_auth,
+				$url_access_token, $url_callback
+			);
+		} elseif ($key == '20') {
+			return new OAuth20Permission(
+				$consumer_key, $consumer_secret,
+				$url_request_token_auth, $url_access_token,
+				$url_callback, $scope
+			);
 		}
+		return null;
+	}
+
+	/**
+	 * Instantiate OAuth*Action class.
+	 *
+	 * When succeeds, each instance has request() method that we
+	 * can use to make any request. Especially for OAuth2.0, there's
+	 * also refresh() method to refresh token when its access token
+	 * is expired.
+	 *
+	 * @param string $service_name Service name as stored in config.
+	 * @param string $service_type Service type as stored in config.
+	 * @param string $access_token Access token returned by site_callback()
+	 *     or retrieved from storage.
+	 * @param string $access_token_secret Access token secret returned
+	 *     by site_callback() or retrived. OAuth1.0 only.
+	 * @param string $refresh_token Refresh token returned by
+	 *     site_callback() or retrieved. OAuth2.0 only.
+	 */
+	public function oauth_get_action_instance(
+		$service_name, $service_type,
+		$access_token, $access_token_secret=null,
+		$refresh_token=null
+	) {
+		$key = $service_name . '-' . $service_type;
+		if (!isset($this->oauth_service_configs[$key]))
+			# key invalid
+			return null;
+		$conf = $this->oauth_service_configs[$key];
+		extract($conf, EXTR_SKIP);
+		if ($key == '10') {
+			return new OAuth10Action(
+				$conf['consumer_key'], $conf['consumer_secret'],
+				$access_token, $access_token_secret
+			);
+		} elseif ($key == '20') {
+			return new OAuth10Action(
+				$conf['consumer_key'], $conf['consumer_secret'],
+				$access_token, $refresh_token,
+				$conf['url_request_token_auth']
+			);
+		}
+		return null;
+	}
+
+	/**
+	 * Route callback for OAuth* token request URL generator.
+	 *
+	 * @param array $args HTTP variables. This must contain sub-keys:
+	 *     'service_type' and 'service_name' in 'params' key. Failing
+	 *     to do so will throw exception.
+	 */
+	public function oauth_get_auth_url($args) {
+		$params = $args['params'];
+		extract($params, EXTR_SKIP);
+
+		if (!self::$core->check_dict(
+			$params, ['service_name', 'service_key'])
+		)
+			throw new OAuthError("Invalid path params.");
+
+		$perm = $this->oauth_get_permission_instance(
+			$service_name, $service_key);
+		if (!$perm)
+			# service unknown
+			return $this->_json([2, 0], 404);
 
 		$url = $perm->get_access_token_url();
 		if (!$url)
 			# access token url not obtained
-			return $this->_json([2, 2], 404);
+			return $this->_json([2, 1], 404);
 		return $this->_json([0, $url]);
 	}
 
-	protected function oauth_callback_url($args) {
+	/**
+	 * Route callback for OAuth* URL callback.
+	 *
+	 * How unfortunate the namings are. First callback is Zap route
+	 * callback method. The second is OAuth* URL callback.
+	 *
+	 * @param array $args HTTP variables. This must contain sub-keys:
+	 *     'service_type' and 'service_name' in 'params' key.
+	 */
+	public function oauth_callback_url($args) {
 		$params = $args['params'];
 		extract($params, EXTR_SKIP);
 
-		$key = $service_name . '-' . $service_type;
-		$conf = $this->oauth_service_configs;
-		if (!isset($conf[$key]))
+		$perm = $this->oauth_get_permission_instance(
+			$service_name, $service_key);
+		if (!$perm)
 			# service unknown
 			return self::$core->abort(404);
 
-		if ($service_type == '10') {
-			$perm = $this->oauth_get_10_instance($key);
-		} elseif ($service_type == '20') {
-			$perm = $this->oauth_get_20_instance($key);
-		} else {
-			return self::$core->abort(404);
-		}
 		$ret = $perm->site_callback($args);
 		if ($ret[0] !== 0) {
 			# callback fail, let's call it server error
@@ -165,8 +301,11 @@ class ZapOAuth extends za\AdminRouteDefault {
 		extract($ret[1], EXTR_SKIP);
 
 		if (!isset($access_token_secret))
-			# OAuth 2.0 doesn't need this.
+			# OAuth1.0 only
 			$access_token_secret = null;
+		if (!isset($refresh_token))
+			# OAuth2.0 only
+			$refresh_token = null;
 
 		# fetch profile, specific to each service
 
@@ -177,7 +316,8 @@ class ZapOAuth extends za\AdminRouteDefault {
 			# cannot fetch profile, most likely server error
 			return self::$core->abort(503);
 
-		# build passwordless account
+		# build passwordless account using obtained uname with uservice
+		# having the form %service_name%[%service_type%]
 
 		$uname = $profile['uname'];
 		$uservice = sprintf('%s[%s]', $service_name, $service_type);
@@ -186,7 +326,7 @@ class ZapOAuth extends za\AdminRouteDefault {
 			'uservice' => $uservice,
 		];
 
-		# safe to udata
+		# save to udata
 
 		$retval = $this->self_add_user_passwordless($args);
 		if ($retval[0] !== 0)
@@ -195,10 +335,32 @@ class ZapOAuth extends za\AdminRouteDefault {
 		if (!isset($retval[1]) || !isset($retval[1]['token']))
 			return self::$core->abort(503);
 
-		# alway autologin on success
+		$session_token = $retval[1]['token'];
 
-		$token = $retval[1]['token'];
-		$this->set_user_token($token);
+		# save to oauth table
+
+		$sql = self::$store->sql;
+		# $retval[1] currently doesn't have 'sid'. Query it first.
+		if (!isset($retval[1]['sid'])) {
+			$sid = $sql->query(
+				"SELECT sid FROM usess WHERE token=? " .
+				"ORDER BY sid DESC LIMIT 1",
+				[$session_token])['sid'];
+		} else {
+			$sid = $retval[1]['sid'];
+		}
+		# inserted data
+		$ins = ['sid' => $sid, 'access' => $access_token];
+		if ($access_token_secret)
+			$ins['access_secret'] = $access_token_secret;
+		if ($refresh_token)
+			$ins['refresh'] = $refresh_token;
+		$sql->insert('oauth', $ins);
+
+		# always autologin on success
+
+		/** @todo Parametrizable OAuth session duration. */
+		$this->set_user_token($session_token);
 		setcookie(
 			$this->get_token_name(), $token,
 			time() + (3600 * 24 * 7), '/');

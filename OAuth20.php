@@ -8,8 +8,8 @@ use BFITech\ZapCore as zc;
 
 class OAuth20Permission extends OAuthCommon {
 
-	private $client_id = null;        # consumer key in 1.0
-	private $client_secret = null;    # consumer secret in 1.0
+	protected $client_id = null;        # consumer key in 1.0
+	protected $client_secret = null;    # consumer secret in 1.0
 
 	private $url_request_token_auth = null;
 	private $url_access_token = null;
@@ -122,7 +122,7 @@ class OAuth20Permission extends OAuthCommon {
 			return [0, $ret];
 
 		# Services may add various additional values, e.g. normalized
-		# scope for Github, expires_in on Google, etc. We'll only
+		# scope for Github, refresh_token on Google, etc. We'll only
 		# check these.
 		$checked = zc\Common::check_dict($resp[1], ['access_token']);
 		if (!$checked)
@@ -135,33 +135,87 @@ class OAuth20Permission extends OAuthCommon {
 
 class OAuth20Action {
 
+	private $access_token = null;
+	private $refresh_token = null;
+
+	private $url_request_token_auth = null;
+
+	/**
+	 * Constructor.
+	 *
+	 * OAuth2.0 only needs $access_token that's passed via query string.
+	 * Theoretically the token is short-lived and must regularly be
+	 * refreshed, which OAuth1.0 doesn't need to.
+	 *
+	 * @param string $consumer_key Consumer key.
+	 * @param string $consumer_secret Consumer secret. 
+	 * @param string $access_token User access token returned by
+	 *     site_callback() or retrieved from some storage.
+	 * @param string $refresh_token User refresh token returned by
+	 *     site_callback() or retrieved from some storage. Only required
+	 *     by refresh().
+	 * @param string $url_request_token_auth Request token authorization URL
+	 *     as in Oauth20Permission. Only required by refresh().
+	 */
+	public function __construct(
+		$consumer_key, $consumer_secret,
+		$access_token, $refresh_token=null,
+		$url_request_token_auth=null
+	) {
+		$this->consumer_key = $consumer_key;
+		$this->consumer_secret = $consumer_secret;
+		$this->access_token = $access_token;
+		$this->refresh_token = $access_token;
+		$this->url_request_token_auth = $url_request_token_auth;
+	}
+	
 	/**
 	 * Generic authorized request wrapper.
 	 *
-	 * @param string $access_token Previously-obtained access token.
 	 * @param string $method Request method.
 	 * @param string $url The URL of the service.
 	 * @param array $headers Custom header, e.g. user agent string
 	 *     that's mandatory for certain services.
 	 * @param array $get Query string dict.
-	 * @param array $post Form data.
-	 * @param bool $is_multipart Whether multipart MIME is to be sent.
+	 * @param array $post Form data dict.
 	 * @param bool $expect_json Whether JSON response is to be
 	 *     expected.
 	 */
 	public static function request(
-		$access_token, $method, $url, $headers=[], $get=[], $post=[],
+		$method, $url, $headers=[], $get=[], $post=[],
 		$expect_json=false
 	) {
-		$headers = [
-			'Accept: application/json',
-			'Expect: ',
-		];
+		if ($expect_json) {
+			$headers[] = 'Accept: application/json';
+			$headers[] = 'Expect: ';
+		}
+
 		# github style, only github accepts this
-		// $headers[] = sprintf('Authorization: token %s', $access_token);
-		$get[] = ['access_token' => $access_token];
+		// $headers[] = sprintf('Authorization: token %s', $this->access_token);
+		# usual style, via get
+		$get[] = ['access_token' => $this->access_token];
+
 		return zc\Common::http_client($url, $method, $headers,
 			$get, $post, $expect_json);
+	}
+
+	/**
+	 * Refresh token.
+	 */
+	public static function refresh() {
+		if (!$this->refresh_token || !$this->url_request_token_auth)
+			return null;
+
+		$headers = ['Content-Type' => 'application/x-www-form-urlencoded'];
+		$post_data = [
+			'client_id' => $this->consumer_key,
+			'client_secret' => $this->consumer_secret,
+			'refresh_token' => $this->refresh_token,
+			'grant_type' => 'refresh_token',
+		];
+
+		return zc\Common::http_client($this->url_request_token_auth,
+			"POST", $headers, [], $post, true);
 	}
 }
 

@@ -8,8 +8,8 @@ use BFITech\ZapCore as zc;
 
 class OAuth10Permission extends OAuthCommon {
 
-	private $consumer_key = null;
-	private $consumer_secret = null;
+	protected $consumer_key = null;
+	protected $consumer_secret = null;
 
 	private $url_request_token = null;
 	private $url_request_token_auth = null;
@@ -247,34 +247,51 @@ class OAuth10Permission extends OAuthCommon {
 
 class OAuth10Action extends OAuth10Permission {
 
+	protected $access_token = null;
+	protected $access_token_secret = null;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param string $consumer_key Consumer key.
+	 * @param string $consumer_secret Consumer secret.
+	 * @param string $access_token User access token returned by
+	 *     site_callback() or retrieved from some storage.
+	 * @param string $access_token_secret User access token secret
+	 *     returned by site_callback() or retrieved from storage.
+	 */
+	public function __construct(
+		$consumer_key, $consumer_secret,
+		$access_token, $access_token_secret
+	) {
+		$this->consumer_key = $consumer_key;
+		$this->consumer_secret = $consumer_secret;
+		$this->access_token = $access_token;
+		$this->access_token_secret = $access_token_secret;
+	}
+
 	/**
 	 * Generic authorized request wrapper.
 	 *
 	 * This is all we need to perform authorized operations. The URL,
 	 * method and arguments depend on respective service.
 	 *
-	 * @param string $access_token User access token returned by
-	 *     site_callback().
-	 * @param string $access_token_secret User access token secret
-	 *     returned by site_callback().
 	 * @param string $method Request method.
 	 * @param string $url The URL of the service.
 	 * @param array $headers Custom header, e.g. user agent string
 	 *     that's mandatory for certain services.
 	 * @param array $get Query string dict.
-	 * @param array $post Form data.
-	 * @param bool $is_multipart Whether multipart MIME is to be sent.
+	 * @param array $post Form data dict.
 	 * @param bool $expect_json Whether JSON response is to be
 	 *     expected.
 	 */
 	public function request(
-		$access_token, $access_token_secret, $method, $url,
-		$headers=[], $get=[], $post=[],
+		$method, $url, $headers=[], $get=[], $post=[],
 		$expect_json=false
 	) {
 		$auth_header = $this->generate_auth_header(
-			$url, $method, ['oauth_token' => $access_token],
-			$access_token_secret);
+			$url, $method, ['oauth_token' => $this->access_token],
+			$this->access_token_secret);
 		$headers[] = "Authorization: " . $auth_header;
 		$headers[] = "Expect: ";
 
