@@ -11,10 +11,14 @@ function some_func($_oauth) {
 	return ['uname' => 'tester'];
 }
 
-$oauth = new zo\OAuthRoute(null, null, [
-	'dbtype'=>'sqlite3',
-	'dbname' => '/mnt/ramdisk/zo.sq3',
-], 3600, false, 'oauthtest');
+$oauth = new zo\OAuthRoute([
+	'dbargs' => [
+		'dbtype'=>'sqlite3',
+		'dbname' => '/mnt/ramdisk/zo.sq3',
+	],
+	'expiration' => 3600,
+	'token_name' => 'oauthtest',
+]);
 
 
 # Make sure server config exists. Use sample to for a

@@ -27,16 +27,32 @@ class OAuthRoute extends za\AdminRoute {
 	/**
 	 * Constructor.
 	 *
-	 * This takes arguments exactly the same with parent class.
+	 * This takes parameters exactly the same with parent class.
 	 */
 	public function __construct(
-		$home=null, $host=null,
+		$home_or_kwargs=null, $host=null, $shutdown=true,
 		$dbargs=[], $expiration=null, $force_create_table=false,
 		$token_name=null, $route_prefix=null
 	) {
-		parent::__construct($home, $host,
+		if (is_array($home_or_kwargs)) {
+			extract(self::extract_kwargs($home_or_kwargs, [
+				'home' => null,
+				'host' => null,
+				'shutdown' => true,
+				'dbargs' => [],
+				'expiration' => null,
+				'force_create_table' => false,
+				'token_name' => null,
+				'route_prefix' => null,
+			]));
+		} else {
+			$home = $home_or_kwargs;
+		}
+		parent::__construct(
+			$home, $host, $shutdown,
 			$dbargs, $expiration, $force_create_table,
-			$token_name, $route_prefix);
+			$token_name, $route_prefix
+		);
 
 		$this->oauth_create_table($force_create_table);
 	}
@@ -106,7 +122,7 @@ class OAuthRoute extends za\AdminRoute {
 	 *
 	 * @param string $session_token Session token.
 	 */
-	public function get_oauth_tokens($session_token) {
+	public function adm_get_oauth_tokens($session_token) {
 		$sql = self::$store;
 		$dtnow = $sql->stmt_fragment('datetime');
 		$stmt = (
@@ -259,7 +275,7 @@ class OAuthRoute extends za\AdminRoute {
 	 * Route callback for OAuth* token request URL generator.
 	 *
 	 * @param array $args HTTP variables. This must contain sub-keys:
-	 *     'service_type' and 'service_name' in 'params' key. Failing
+	 *     `service_type` and `service_name` in `params` key. Failing
 	 *     to do so will throw exception.
 	 */
 	public function route_byway_auth($args) {
@@ -291,7 +307,7 @@ class OAuthRoute extends za\AdminRoute {
 	 * callback method. The second is OAuth* URL callback.
 	 *
 	 * @param array $args HTTP variables. This must contain sub-keys:
-	 *     'service_type' and 'service_name' in 'params' key.
+	 *     `service_type` and `service_name` in `params` key.
 	 */
 	public function route_byway_callback($args) {
 		$params = $args['params'];
@@ -352,7 +368,7 @@ class OAuthRoute extends za\AdminRoute {
 
 		# save to udata
 
-		$retval = $this->self_add_user_passwordless($args);
+		$retval = $this->adm_self_add_user_passwordless($args);
 		if ($retval[0] !== 0)
 			# saving data fails, most likely server error
 			return self::$core->abort(503);
@@ -384,9 +400,9 @@ class OAuthRoute extends za\AdminRoute {
 		# always autologin on success
 
 		/** @todo Parametrizable OAuth session duration. */
-		$this->set_user_token($session_token);
+		$this->adm_set_user_token($session_token);
 		setcookie(
-			$this->get_token_name(), $session_token,
+			$this->adm_get_token_name(), $session_token,
 			time() + (3600 * 24 * 7), '/');
 
 		# success, back home

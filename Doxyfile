@@ -107,10 +107,14 @@ FILE_PATTERNS          = *.php
 RECURSIVE              = YES
 EXCLUDE                = NO
 EXCLUDE_SYMLINKS       = NO
-EXCLUDE_PATTERNS       =
 EXCLUDE_PATTERNS       = */vendor/composer/* \
                          */vendor/autoload.php \
-                         */vendor/bin/*
+                         */vendor/bfitech/zapcore \
+                         */vendor/bfitech/zapstore \
+                         */vendor/bfitech/zaplate \
+                         */vendor/autoload.php \
+                         */vendor/bin/* \
+                         */tests/*
 EXCLUDE_SYMBOLS        =
 EXAMPLE_PATH           =
 EXAMPLE_PATTERNS       =
