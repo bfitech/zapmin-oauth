@@ -61,9 +61,7 @@ class OAuth20Permission extends OAuthCommon {
 	/**
 	 * Site callback.
 	 *
-	 * @params array $args Route arguments.
-	 * @params string $redirect_uri Redirect URI, or $this->callback_uri
-	 *     if left null.
+	 * @param array $args Route arguments.
 	 * @return array [errno, body] where errno == 0 on success.
 	 */
 	public function site_callback($args) {

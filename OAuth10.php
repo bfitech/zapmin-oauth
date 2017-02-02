@@ -185,7 +185,7 @@ class OAuth10Permission extends OAuthCommon {
 	 *
 	 * Web only. Use this in a route.
 	 *
-	 * @param array $params Callback GET parameters sent by remote service,
+	 * @param array $args Callback GET parameters sent by remote service,
 	 *     must contain request token keys:
 	 *         - oauth_token
 	 *         - oauth_verifier

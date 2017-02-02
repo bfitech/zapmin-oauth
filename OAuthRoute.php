@@ -28,11 +28,14 @@ class OAuthRoute extends za\AdminRoute {
 	 * Constructor.
 	 *
 	 * This takes parameters exactly the same with parent class.
+	 *
+	 * @see BFITech\\ZapAdmin\\AdminRoute.
 	 */
 	public function __construct(
 		$home_or_kwargs=null, $host=null, $shutdown=true,
 		$dbargs=[], $expiration=null, $force_create_table=false,
-		$token_name=null, $route_prefix=null
+		$token_name=null, $route_prefix=null,
+		$core_instance=null, $store_instance=null
 	) {
 		if (is_array($home_or_kwargs)) {
 			extract(zc\Common::extract_kwargs($home_or_kwargs, [
@@ -44,6 +47,8 @@ class OAuthRoute extends za\AdminRoute {
 				'force_create_table' => false,
 				'token_name' => null,
 				'route_prefix' => null,
+				'core_instance' => null,
+				'store_instance' => null,
 			]));
 		} else {
 			$home = $home_or_kwargs;
@@ -380,15 +385,7 @@ class OAuthRoute extends za\AdminRoute {
 		# save to oauth table
 
 		$sql = self::$store;
-		# $retval[1] currently doesn't have 'sid'. Query it first.
-		if (!isset($retval[1]['sid'])) {
-			$sid = $sql->query(
-				"SELECT sid FROM usess WHERE token=? " .
-				"ORDER BY sid DESC LIMIT 1",
-				[$session_token])['sid'];
-		} else {
-			$sid = $retval[1]['sid'];
-		}
+		$sid = $retval[1]['sid'];
 		# inserted data
 		$ins = ['sid' => $sid, 'access' => $access_token];
 		if ($access_token_secret)
