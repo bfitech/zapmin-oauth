@@ -35,7 +35,7 @@ class OAuthRoute extends za\AdminRoute {
 		$token_name=null, $route_prefix=null
 	) {
 		if (is_array($home_or_kwargs)) {
-			extract(self::extract_kwargs($home_or_kwargs, [
+			extract(zc\Common::extract_kwargs($home_or_kwargs, [
 				'home' => null,
 				'host' => null,
 				'shutdown' => true,

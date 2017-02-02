@@ -12,7 +12,7 @@
             "source": {
                 "type": "git",
                 "url": "git@bfinews.com:bfin/zapcore.git",
-                "reference": "82b06d409df80f0c533a3e2e646a5475d40e5739"
+                "reference": "b1a05930812626ad8e2a2b381229c3355d917924"
             },
             "require": {
                 "ext-curl": "*",
@@ -39,7 +39,7 @@
                 }
             ],
             "description": "A very simple router and other utils.",
-            "time": "2017-02-01 11:15:05"
+            "time": "2017-02-02 13:09:57"
         },
         {
             "name": "bfitech/zapmin",
@@ -47,7 +47,7 @@
             "source": {
                 "type": "git",
                 "url": "git@bfinews.com:bfin/zapmin.git",
-                "reference": "49a408b14b0c1452b24bb41a9dd5279a27291958"
+                "reference": "77df63a87708d5dbaeaa071120154dbf25c920db"
             },
             "require": {
                 "bfitech/zapcore": "dev-master",
@@ -78,7 +78,7 @@
                 }
             ],
             "description": "A simple authentication manager.",
-            "time": "2017-02-01 12:40:33"
+            "time": "2017-02-02 13:44:14"
         },
         {
             "name": "bfitech/zapstore",
