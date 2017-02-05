@@ -89,7 +89,7 @@ class OAuthRoute extends za\AdminRoute {
 		$index = $sql->stmt_fragment('index');
 		$engine = $sql->stmt_fragment('engine');
 		$expire = $sql->stmt_fragment(
-			'datetime', ['delta' => $this->get_expiration()]);
+			'datetime', ['delta' => $this->adm_get_expiration()]);
 
 		# Each row is associated with a session.sid. Associate the
 		# two tables with self::$store->status() return value.
