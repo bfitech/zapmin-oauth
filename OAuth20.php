@@ -169,31 +169,21 @@ class OAuth20Action {
 	/**
 	 * Generic authorized request wrapper.
 	 *
-	 * @param string $method Request method.
-	 * @param string $url The URL of the service.
-	 * @param array $headers Custom header, e.g. user agent string
-	 *     that's mandatory for certain services.
-	 * @param array $get Query string dict.
-	 * @param array $post Form data dict.
-	 * @param bool $expect_json Whether JSON response is to be
-	 *     expected.
+	 * @param array $kwargs Common::http_client kwarg parameter. 
 	 */
-	public static function request(
-		$method, $url, $headers=[], $get=[], $post=[],
-		$expect_json=false
-	) {
-		if ($expect_json) {
-			$headers[] = 'Accept: application/json';
-			$headers[] = 'Expect: ';
+	public function request($kwargs) {
+		if (!isset($kwargs['headers']))
+			$kwargs['headers'] = [];
+		if (isset($kwargs['expect_json']) && $kwargs['expect_json']) {
+			$kwargs['headers'][] = 'Accept: application/json';
+			$kwargs['headers'][] = 'Expect: ';
 		}
-
-		# github style, only github accepts this
-		// $headers[] = sprintf('Authorization: token %s', $this->access_token);
-		# usual style, via get
-		$get[] = ['access_token' => $this->access_token];
-
-		return zc\Common::http_client($url, $method, $headers,
-			$get, $post, $expect_json);
+		# github uses 'Authorization' header; this method only provides
+		# default, i.e. via get
+		if (!isset($kwargs['get']))
+			$kwargs['get'] = [];
+		$kwargs['get'][] = ['access_token' => $this->access_token];
+		return zc\Common::http_client($kwargs);
 	}
 
 	/**
@@ -203,25 +193,26 @@ class OAuth20Action {
 	 *     expected.
 	 * @todo Untested.
 	 */
-	public static function refresh($expect_json) {
+	public function refresh($expect_json) {
 		if (!$this->refresh_token || !$this->url_request_token_auth)
 			return null;
-
 		$headers = ['Content-Type: application/x-www-form-urlencoded'];
 		if ($expect_json) {
 			$headers[] = 'Accept: application/json';
 			$headers[] = 'Expect: ';
 		}
-
-		$post_data = [
-			'client_id' => $this->consumer_key,
-			'client_secret' => $this->consumer_secret,
-			'refresh_token' => $this->refresh_token,
-			'grant_type' => 'refresh_token',
-		];
-
-		return zc\Common::http_client($this->url_request_token_auth,
-			"POST", $headers, [], $post, true);
+		return zc\Common::http_client([
+			'method' => "POST",
+			'url' => $this->url_request_token_auth,
+			'headers' => $headers,
+			'post' => [
+				'client_id' => $this->consumer_key,
+				'client_secret' => $this->consumer_secret,
+				'refresh_token' => $this->refresh_token,
+				'grant_type' => 'refresh_token',
+			],
+			'expect_json' => $expect_json,
+		]);
 	}
 }
 

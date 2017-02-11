@@ -19,15 +19,49 @@ class OAuthRoute extends za\AdminRoute {
 	 */
 	private $oauth_service_configs = [];
 
+	# service
+	private $service_name = null;
+	private $service_type = null;
+
 	# tokens
 	private $access_token = null;
 	private $access_token_secret = null;  # OAuth1.0 only
 	private $refresh_token = null;        # OAuth2.0 only
 
+	# redirect after successful auth callback
+	// There's no default facility to change this by default.
+	// Only subclass can take advantage of this.
+	public $oauth_callback_ok_redirect = null;
+
 	/**
 	 * Constructor.
 	 *
 	 * This takes parameters exactly the same with parent class.
+	 *
+	 * General workflow:
+	 *
+	 * 1. Instantiate OAuthRoute $o, let's call this super-oauth.
+	 * 2. Create a profile callback, i.e. profile retriever when
+	 *    authentications succeeds, which takes super-oauth as
+	 *    parameter and return a username on success.
+	 * 3. Register services with $o->oauth_add_service() with
+	 *    appropriate configuration. This includes profile callback
+	 *    in 2).
+	 * 4. Use route handler $o->route_byway_auth for generating
+	 *    access token.
+	 * 5. Use route handler $o->route_byway_callback for accepting
+	 *    successful access token request.
+	 * 6. Subsequent API requests need access and access secret
+	 *    tokens for OAuth1.0. These can be obtained with
+	 *    $o->adm_get_oauth_tokens(), which takes zap session token
+	 *    as parameter or in special case, null. e.g. when we
+	 *    need to get token inside profile callback 2).
+	 * 7. From super-oauth, we can instantiate the real oauth{1,2}
+	 *    class with $c = $o->oauth_get_action_instance(), taking
+	 *    tokens provided by 6 as parameter(s). This instance
+	 *    has $c->request() method with which we can do requests to
+	 *    the API service. For OAuth2.0, it also has $c->refresh()
+	 *    for token refresh.
 	 *
 	 * @see BFITech\\ZapAdmin\\AdminRoute.
 	 */
@@ -72,7 +106,7 @@ class OAuthRoute extends za\AdminRoute {
 	private function oauth_create_table($force_create_table) {
 		$sql = self::$store;
 		try {
-			$test = $sql->query("SELECT aid FROM uoauth LIMIT 1");
+			$test = $sql->query("SELECT 1 FROM uoauth");
 			if (!$force_create_table)
 				return;
 		} catch (\PDOException $e) {}
@@ -97,6 +131,8 @@ class OAuthRoute extends za\AdminRoute {
 			"CREATE TABLE uoauth (" .
 			"  aid %s," .
 			"  sid INTEGER REFERENCES usess(sid) ON DELETE CASCADE," .
+			"  oname VARCHAR(64)," .
+			"  otype VARCHAR(12)," .
 			"  access TEXT," .
 			"  access_secret TEXT," .    # OAuth1.0 only
 			"  refresh TEXT" .           # OAuth2.0 only
@@ -123,21 +159,47 @@ class OAuthRoute extends za\AdminRoute {
 	}
 
 	/**
-	 * Get active OAuth* tokens given a session token.
+	 * Get active OAuth* tokens.
+	 *
+	 * If session token is supplied, this will retrieve from
+	 * database. Otherwise this will just dump current tokens in the
+	 * instance regardless the value. Latter case might be useful
+	 * when token has just been obtained, e.g. from within
+	 * callback_fetch_profile in the config.
 	 *
 	 * @param string $session_token Session token.
+	 * @return array Array of tokens and oauth information of
+	 *     current service.
 	 */
-	public function adm_get_oauth_tokens($session_token) {
+	public function adm_get_oauth_tokens($session_token=null) {
+		if (!$session_token) {
+			return [
+				'oname' => $this->service_name,
+				'otype' => $this->service_type,
+				'access' => $this->access_token,
+				'access_secret' => $this->access_token_secret,
+				'refresh' => $this->refresh_token,
+			];
+		}
 		$sql = self::$store;
 		$dtnow = $sql->stmt_fragment('datetime');
 		$stmt = (
-			"SELECT otype, access, access_secret, refresh " .
+			"SELECT oname, otype, access, access_secret, refresh " .
 			"FROM v_oauth " .
 			"WHERE token=? AND expire>%s " .
 			"ORDER BY sid DESC LIMIT 1"
 		);
 		$stmt = sprintf($stmt, $dtnow);
-		return $sql->query($stmt, [$session_token]);
+		$result = $sql->query($stmt, [$session_token]);
+		if ($result)
+			return $result;
+		return [
+			'oname' => null,
+			'otype' => null,
+			'access' => null,
+			'access_secret' => null,
+			'refresh' => null,
+		];
 	}
 
 	/**
@@ -203,12 +265,16 @@ class OAuthRoute extends za\AdminRoute {
 		];
 	}
 
+	# super-oauth methods
+
 	/**
 	 * Instantiate OAuth*Permission class.
 	 */
 	private function oauth_get_permission_instance(
 		$service_name, $service_type
 	) {
+		$this->service_name = $service_name;
+		$this->service_type = $service_type;
 		$key = $service_name . '-' . $service_type;
 		if (!isset($this->oauth_service_configs[$key]))
 			# key invalid
@@ -253,6 +319,8 @@ class OAuthRoute extends za\AdminRoute {
 		$access_token, $access_token_secret=null,
 		$refresh_token=null
 	) {
+		$this->service_name = $service_name;
+		$this->service_type = $service_type;
 		$key = $service_name . '-' . $service_type;
 		if (!isset($this->oauth_service_configs[$key]))
 			# key invalid
@@ -265,7 +333,7 @@ class OAuthRoute extends za\AdminRoute {
 				$access_token, $access_token_secret
 			);
 		} elseif ($service_type == '20') {
-			return new OAuth10Action(
+			return new OAuth20Action(
 				$conf['consumer_key'], $conf['consumer_secret'],
 				$access_token, $refresh_token,
 				$conf['url_request_token_auth']
@@ -364,14 +432,13 @@ class OAuthRoute extends za\AdminRoute {
 		# build passwordless account using obtained uname with uservice
 		# having the form %service_name%[%service_type%]
 
-		$uname = $profile['uname'];
 		$uservice = sprintf('%s[%s]', $service_name, $service_type);
 		$args['service'] = [
-			'uname' => $uname,
+			'uname' => $profile['uname'],
 			'uservice' => $uservice,
 		];
 
-		# save to udata
+		# register passwordless
 
 		$retval = $this->adm_self_add_user_passwordless($args);
 		if ($retval[0] !== 0)
@@ -379,15 +446,34 @@ class OAuthRoute extends za\AdminRoute {
 			return self::$core->abort(503);
 		if (!isset($retval[1]) || !isset($retval[1]['token']))
 			return self::$core->abort(503);
+		$nudata = $retval[1];
+		$session_token = $nudata['token'];
 
-		$session_token = $retval[1]['token'];
+		# save additional udate from profile retriever if exists
+		$sql = self::$store;
+
+		$updata = [];
+		foreach (['fname', 'email', 'site'] as $key) {
+			if (isset($profile[$key]))
+				$updata[$key] = $profile[$key];
+		}
+		if (isset($updata['email']))
+			$updata['email_verified'] = 1;
+		if ($updata)
+			$sql->update('udata', $updata, [
+				'uid' => $nudata['uid']
+			]);
 
 		# save to oauth table
 
-		$sql = self::$store;
 		$sid = $retval[1]['sid'];
 		# inserted data
-		$ins = ['sid' => $sid, 'access' => $access_token];
+		$ins = [
+			'sid' => $sid,
+			'oname' => $this->service_name,
+			'otype' => $this->service_type,
+			'access' => $access_token,
+		];
 		if ($access_token_secret)
 			$ins['access_secret'] = $access_token_secret;
 		if ($refresh_token)
@@ -402,8 +488,13 @@ class OAuthRoute extends za\AdminRoute {
 			$this->adm_get_token_name(), $session_token,
 			time() + (3600 * 24 * 7), '/');
 
-		# success, back home
-		return self::$core->redirect('/');
+		# success
+		if ($this->oauth_callback_ok_redirect)
+			# redirect
+			return self::$core->redirect(
+				$this->oauth_callback_ok_redirect);
+		# or just go home
+		return self::$core->redirect(self::$core->get_home());
 	}
 }
 

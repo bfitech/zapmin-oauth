@@ -226,7 +226,6 @@ class OAuth10Permission extends OAuthCommon {
 			'headers' => $headers,
 			'post' => $post_data
 		]);
-
 		if ($resp[0] !== 200)
 			return [3];
 
@@ -276,27 +275,28 @@ class OAuth10Action extends OAuth10Permission {
 	 * This is all we need to perform authorized operations. The URL,
 	 * method and arguments depend on respective service.
 	 *
-	 * @param string $method Request method.
-	 * @param string $url The URL of the service.
-	 * @param array $headers Custom header, e.g. user agent string
-	 *     that's mandatory for certain services.
-	 * @param array $get Query string dict.
-	 * @param array $post Form data dict.
-	 * @param bool $expect_json Whether JSON response is to be
-	 *     expected.
+	 * @param array $kwargs Common::http_client kwarg parameter. 
+	 * @fixme: This won't stop $kwargs['url'] from having query
+	 *     string. It must be isolated in $kwargs['get'] and fed
+	 *     to extra params of $this->generate_auth_header() so
+	 *     it will generate valid base string. URL with query
+	 *     string will fail the signing.
 	 */
-	public function request(
-		$method, $url, $headers=[], $get=[], $post=[],
-		$expect_json=false
-	) {
+	public function request($kwargs) {
+		if (!zc\Common::check_dict($kwargs, ['method', 'url']))
+			return [-1, null];
+		$bstr_raw = ['oauth_token' => $this->access_token];
+		if (isset($kwargs['get']) && $kwargs['get'])
+			$bstr_raw = array_merge($bstr_raw, $kwargs['get']);
 		$auth_header = $this->generate_auth_header(
-			$url, $method, ['oauth_token' => $this->access_token],
-			$this->access_token_secret);
-		$headers[] = "Authorization: " . $auth_header;
-		$headers[] = "Expect: ";
-
-		return zc\Common::http_client($url, $method, $headers,
-			$get, $post, $expect_json);
+			$kwargs['url'], $kwargs['method'], $bstr_raw,
+			$this->access_token_secret
+		);
+		if (!isset($kwargs['headers']))
+			$kwargs['headers'] = [];
+		$kwargs['headers'][] = "Authorization: " . $auth_header;
+		$kwargs['headers'][] = "Expect: ";
+		return zc\Common::http_client($kwargs);
 	}
 
 }
