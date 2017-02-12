@@ -83,6 +83,9 @@ class OAuth20Permission extends OAuthCommon {
 		];
 
 		# Auth Basic hack for yahoo, reddit, linkedin
+		# @fixme: Only tested on LinkedIn as of now. Not sure if
+		#     still accurate. A change on this breaks the
+		#     encapsulation provided by this method.
 		foreach(['yahoo', 'reddit', 'linkedin'] as $srv) {
 			if (strstr(substr($url, 0, 20), $srv) !== false) {
 				$headers[] = 'Authorization: Basic ' . base64_encode(
@@ -169,6 +172,9 @@ class OAuth20Action {
 	/**
 	 * Generic authorized request wrapper.
 	 *
+	 * This completely lets a caller to do whatever it wants with
+	 * access token since each service use it differently.
+	 *
 	 * @param array $kwargs Common::http_client kwarg parameter. 
 	 */
 	public function request($kwargs) {
@@ -178,11 +184,6 @@ class OAuth20Action {
 			$kwargs['headers'][] = 'Accept: application/json';
 			$kwargs['headers'][] = 'Expect: ';
 		}
-		# github uses 'Authorization' header; this method only provides
-		# default, i.e. via get
-		if (!isset($kwargs['get']))
-			$kwargs['get'] = [];
-		$kwargs['get'][] = ['access_token' => $this->access_token];
 		return zc\Common::http_client($kwargs);
 	}
 
