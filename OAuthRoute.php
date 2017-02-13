@@ -90,7 +90,8 @@ class OAuthRoute extends za\AdminRoute {
 		parent::__construct(
 			$home, $host, $shutdown,
 			$dbargs, $expiration, $force_create_table,
-			$token_name, $route_prefix
+			$token_name, $route_prefix,
+			$core_instance, $store_instance
 		);
 
 		$this->oauth_create_table($force_create_table);

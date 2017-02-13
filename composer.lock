@@ -47,7 +47,7 @@
             "source": {
                 "type": "git",
                 "url": "git@bfinews.com:bfin/zapmin.git",
-                "reference": "a14509ad1868c42ff5665581e4ef8d6d4cd264d4"
+                "reference": "e0c564b24e09b87a5e415ea595545393a80d3bab"
             },
             "require": {
                 "bfitech/zapcore": "dev-master",
@@ -78,7 +78,7 @@
                 }
             ],
             "description": "A simple authentication manager.",
-            "time": "2017-02-02 16:04:26"
+            "time": "2017-02-13 08:22:00"
         },
         {
             "name": "bfitech/zapstore",
