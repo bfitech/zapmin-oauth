@@ -28,10 +28,11 @@ class OAuthRoute extends za\AdminRoute {
 	private $access_token_secret = null;  # OAuth1.0 only
 	private $refresh_token = null;        # OAuth2.0 only
 
-	# redirect after successful auth callback
-	// There's no default facility to change this by default.
+	# redirect after successful or failed auth callback
+	// There's no default facility to change these by default.
 	// Only subclass can take advantage of this.
 	public $oauth_callback_ok_redirect = null;
+	public $oauth_callback_fail_redirect = null;
 
 	/**
 	 * Constructor.
@@ -406,7 +407,11 @@ class OAuthRoute extends za\AdminRoute {
 
 		$ret = $perm->site_callback($args);
 		if ($ret[0] !== 0) {
-			# callback fail, let's call it server error
+			# fail redirect available
+			if ($this->oauth_callback_fail_redirect)
+				return self::$core->redirect(
+					$this->oauth_callback_fail_redirect);
+			# no redirect, let's call it server error
 			return self::$core->abort(503);
 		}
 		extract($ret[1], EXTR_SKIP);
