@@ -376,6 +376,18 @@ class OAuthRoute extends za\AdminRoute {
 	}
 
 	/**
+	 * Wrapper for callback error handler.
+	 */
+	private function _route_byway_failed() {
+		# fail redirect available
+		if ($this->oauth_callback_fail_redirect)
+			return self::$core->redirect(
+				$this->oauth_callback_fail_redirect);
+		# no redirect, let's call it server error
+		return self::$core->abort(503);
+	}
+
+	/**
 	 * Route callback for OAuth* URL callback.
 	 *
 	 * How unfortunate the namings are. First callback is Zap route
@@ -406,14 +418,8 @@ class OAuthRoute extends za\AdminRoute {
 			return self::$core->abort(404);
 
 		$ret = $perm->site_callback($args);
-		if ($ret[0] !== 0) {
-			# fail redirect available
-			if ($this->oauth_callback_fail_redirect)
-				return self::$core->redirect(
-					$this->oauth_callback_fail_redirect);
-			# no redirect, let's call it server error
-			return self::$core->abort(503);
-		}
+		if ($ret[0] !== 0)
+			return $this->_route_byway_failed();
 		extract($ret[1], EXTR_SKIP);
 
 		if (!isset($access_token_secret))
@@ -433,7 +439,7 @@ class OAuthRoute extends za\AdminRoute {
 		$profile = $cb_profile($this);
 		if (!$profile)
 			# cannot fetch profile, most likely server error
-			return self::$core->abort(503);
+			return $this->_route_byway_failed();
 
 		# build passwordless account using obtained uname with uservice
 		# having the form %service_name%[%service_type%]
@@ -449,9 +455,9 @@ class OAuthRoute extends za\AdminRoute {
 		$retval = $this->adm_self_add_user_passwordless($args);
 		if ($retval[0] !== 0)
 			# saving data fails, most likely server error
-			return self::$core->abort(503);
+			return $this->_route_byway_failed();
 		if (!isset($retval[1]) || !isset($retval[1]['token']))
-			return self::$core->abort(503);
+			return $this->_route_byway_failed();
 		$nudata = $retval[1];
 		$session_token = $nudata['token'];
 
