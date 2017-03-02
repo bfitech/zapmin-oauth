@@ -4,6 +4,7 @@
 namespace BFITech\ZapOAuth;
 
 use BFITech\ZapCore as zc;
+use BFITech\ZapStore as zs;
 use BFITech\ZapAdmin as za;
 
 
@@ -111,7 +112,7 @@ class OAuthRoute extends za\AdminRoute {
 			$test = $sql->query("SELECT 1 FROM uoauth");
 			if (!$force_create_table)
 				return;
-		} catch (\PDOException $e) {}
+		} catch (zs\SQLError $e) {}
 
 		foreach([
 			"DROP VIEW IF EXISTS v_uoauth;",
