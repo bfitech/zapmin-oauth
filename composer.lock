@@ -47,7 +47,7 @@
             "source": {
                 "type": "git",
                 "url": "git@bfinews.com:bfin/zapmin.git",
-                "reference": "e0c564b24e09b87a5e415ea595545393a80d3bab"
+                "reference": "3c7e9b6f85b384aadaa9fc8525c31c1eba4e7685"
             },
             "require": {
                 "bfitech/zapcore": "dev-master",
@@ -78,7 +78,7 @@
                 }
             ],
             "description": "A simple authentication manager.",
-            "time": "2017-02-13 08:22:00"
+            "time": "2017-02-25 12:37:13"
         },
         {
             "name": "bfitech/zapstore",
@@ -86,7 +86,7 @@
             "source": {
                 "type": "git",
                 "url": "git@bfinews.com:bfin/zapstore.git",
-                "reference": "7ea7fd6891f2ff7093c630d5ae7e5e76ee9c91f6"
+                "reference": "da4ecbc52d25f8fde3fb5c7d90380dc74d1f4cfb"
             },
             "require": {
                 "php": ">=5.4.0"
@@ -107,7 +107,7 @@
                 }
             ],
             "description": "A simple SQL connection wrapper.",
-            "time": "2017-01-25 16:14:36"
+            "time": "2017-02-25 18:56:03"
         }
     ],
     "packages-dev": [],
