@@ -6,10 +6,15 @@ namespace BFITech\ZapOAuth;
 use BFITech\ZapCore as zc;
 
 
+/**
+ * OAuth2.0 class.
+ */
 class OAuth20Permission extends OAuthCommon {
 
-	protected $client_id = null;        # consumer key in 1.0
-	protected $client_secret = null;    # consumer secret in 1.0
+	/** Client ID, equivalent to consumer key in OAuth1.0. */
+	protected $client_id = null;
+	/** Client secret, equivalent to consumer secret in OAuth 1.0. */
+	protected $client_secret = null;
 
 	private $url_request_token_auth = null;
 	private $url_access_token = null;
@@ -18,6 +23,9 @@ class OAuth20Permission extends OAuthCommon {
 
 	private $scope = null;
 
+	/**
+	 * Constructor.
+	 */
 	public function __construct(
 		$client_id, $client_secret,
 		$url_request_token_auth, $url_access_token,
@@ -133,6 +141,10 @@ class OAuth20Permission extends OAuthCommon {
 	}
 }
 
+
+/**
+ * OAuth20Action class.
+ */
 class OAuth20Action {
 
 	private $access_token = null;

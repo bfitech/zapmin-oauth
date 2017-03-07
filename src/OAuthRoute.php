@@ -10,6 +10,10 @@ use BFITech\ZapAdmin as za;
 
 class OAuthError extends \Exception {}
 
+
+/**
+ * OAuthRoute class.
+ */
 class OAuthRoute extends za\AdminRoute {
 
 	/**
@@ -29,10 +33,11 @@ class OAuthRoute extends za\AdminRoute {
 	private $access_token_secret = null;  # OAuth1.0 only
 	private $refresh_token = null;        # OAuth2.0 only
 
-	# redirect after successful or failed auth callback
 	// There's no default facility to change these by default.
 	// Only subclass can take advantage of this.
+	/** Redirect URL after successful callback. */
 	public $oauth_callback_ok_redirect = null;
+	/** Redirect URL after failed callback. */
 	public $oauth_callback_fail_redirect = null;
 
 	/**
@@ -44,17 +49,17 @@ class OAuthRoute extends za\AdminRoute {
 	 *
 	 * 1. Instantiate OAuthRoute $o, let's call this super-oauth.
 	 * 2. Create a profile callback, i.e. profile retriever when
-	 *    authentications succeeds, which takes super-oauth as
-	 *    parameter and return a username on success.
+	 *    authentication succeeds, which takes super-oauth as
+	 *    parameter and returns a username on success.
 	 * 3. Register services with $o->oauth_add_service() with
 	 *    appropriate configuration. This includes profile callback
 	 *    in 2).
-	 * 4. Use route handler $o->route_byway_auth for generating
+	 * 4. Use route handler $o->route_byway_auth() for generating
 	 *    access token.
-	 * 5. Use route handler $o->route_byway_callback for accepting
+	 * 5. Use route handler $o->route_byway_callback() for accepting
 	 *    successful access token request.
-	 * 6. Subsequent API requests need access and access secret
-	 *    tokens for OAuth1.0. These can be obtained with
+	 * 6. Subsequent API requests need access (and access secret
+	 *    tokens for OAuth1.0). These can be obtained with
 	 *    $o->adm_get_oauth_tokens(), which takes zap session token
 	 *    as parameter or in special case, null. e.g. when we
 	 *    need to get token inside profile callback 2).
@@ -217,18 +222,20 @@ class OAuthRoute extends za\AdminRoute {
 	 * @param string $url_token Token request URL. Not used by OAuth2.0.
 	 * @param string $url_token_auth Token request authentication URL.
 	 * @param string $url_access Access token URL for callback URL.
-	 * @param function $callback_fetch_profile A function that fetch
-	 *     profile that passes callback URL. It takes arguments:
+	 * @param string $scope Access scope, service-independent.
+	 * @param function $callback_fetch_profile A function which fetches
+	 *     profile data after $this->route_byway_callback() succeeds. This
+	 *     must return a dict with at least one key `uname`, or null with
+	 *     fetching failed. This takes arguments:
 	 *     - access_token, obtained by successful callback
 	 *     - access_token_secret, 1.0 only
 	 *     - current service configuration
-	 *     - current object referred by $this, just so we can easily
-	 *       use static method in it
-	 *     It must return an array that at least has one keys 'uname'.
+	 *     - reference to $this, just so we can easily use static method
+	 *       on it
 	 * @param string $url_callback Optional callback URL. If left null,
 	 *     the value will be inferred. Services usually require this
 	 *     to be explicitly set according to what you register in there,
-	 *     or else, they will return error at oauth_get_url().
+	 *     or else, they will return error at $this->route_byway_callback().
 	 */
 	public function oauth_add_service(
 		$consumer_key, $consumer_secret,
@@ -315,7 +322,7 @@ class OAuthRoute extends za\AdminRoute {
 	 * @param string $access_token_secret Access token secret returned
 	 *     by site_callback() or retrived. OAuth1.0 only.
 	 * @param string $refresh_token Refresh token returned by
-	 *     site_callback() or retrieved. OAuth2.0 only.
+	 *     $this->route_byway_callback() or retrieved. OAuth2.0 only.
 	 */
 	public function oauth_get_action_instance(
 		$service_name, $service_type,

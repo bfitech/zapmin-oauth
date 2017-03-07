@@ -5,8 +5,8 @@
 #---------------------------------------------------------------------------
 DOXYFILE_ENCODING      = UTF-8
 PROJECT_NAME           = "ZapOAuth"
-PROJECT_NUMBER         = "1.0.00-alpha"
-PROJECT_BRIEF          = "An OAuth-based authentication manager."
+PROJECT_NUMBER         = "1.0.0"
+PROJECT_BRIEF          = "An OAuth-based Authentication Manager."
 PROJECT_LOGO           =
 OUTPUT_DIRECTORY       = ./docs
 CREATE_SUBDIRS         = YES
@@ -241,3 +241,7 @@ DOT_TRANSPARENT        = NO
 DOT_MULTI_TARGETS      = NO
 GENERATE_LEGEND        = YES
 DOT_CLEANUP            = YES
+#---------------------------------------------------------------------------
+# No LaTeX
+#---------------------------------------------------------------------------
+GENERATE_LATEX         = NO

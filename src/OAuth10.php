@@ -6,9 +6,14 @@ namespace BFITech\ZapOAuth;
 use BFITech\ZapCore as zc;
 
 
+/**
+ * OAuth1.0 class.
+ */
 class OAuth10Permission extends OAuthCommon {
 
+	/** Consumer key. */
 	protected $consumer_key = null;
+	/** Consumer secret. */
 	protected $consumer_secret = null;
 
 	private $url_request_token = null;
@@ -17,6 +22,9 @@ class OAuth10Permission extends OAuthCommon {
 
 	private $url_callback = null;
 
+	/**
+	 * Constructor.
+	 */
 	public function __construct(
 		$consumer_key, $consumer_secret,
 		$url_request_token, $url_request_token_auth,
@@ -244,9 +252,15 @@ class OAuth10Permission extends OAuthCommon {
 	}
 }
 
+
+/**
+ * OAuth10Action class.
+ */
 class OAuth10Action extends OAuth10Permission {
 
+	/** Access token. */
 	protected $access_token = null;
+	/** Access token secret. */
 	protected $access_token_secret = null;
 
 	/**
@@ -276,7 +290,7 @@ class OAuth10Action extends OAuth10Permission {
 	 * method and arguments depend on respective service.
 	 *
 	 * @param array $kwargs Common::http_client kwarg parameter. 
-	 * @fixme: This won't stop $kwargs['url'] from having query
+	 * @todo This won't stop $kwargs['url'] from having query
 	 *     string. It must be isolated in $kwargs['get'] and fed
 	 *     to extra params of $this->generate_auth_header() so
 	 *     it will generate valid base string. URL with query
