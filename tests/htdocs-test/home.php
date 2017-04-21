@@ -81,18 +81,18 @@
 })();
 	</script>
 	<style>
-#wrap{
-	display:flex;
-	align-items:center;
-	justify-content:center;
-	height:90vh;
-	font-family:monospace;
-}
-#box{
-	height:12em;
-	padding:8px;
-	border:1px solid rgba(0,0,0,.3);
-	width:400px;
+	#wrap{
+		display:flex;
+		align-items:center;
+		justify-content:center;
+		height:90vh;
+		font-family:monospace;
+	}
+	#box{
+		height:12em;
+		padding:8px;
+		border:1px solid rgba(0,0,0,.3);
+		width:400px;
 	</style>
 </head>
 <body>

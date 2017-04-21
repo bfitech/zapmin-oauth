@@ -45,7 +45,8 @@ class OAuth20Test extends TestCase {
 		$adm = new OAuth20Store($store, true, self::$logger);
 
 		$adm->oauth_add_service(
-			'20', 'reddit',
+			'20',
+			'reddit',
 			'consumer-key-test',
 			'consumer-secret-test',
 			null,

@@ -46,12 +46,14 @@ class OAuth10Test extends TestCase {
 
 		try {
 			$adm->oauth_add_service(
-				'30', 'twitter',
+				'30',
+				'twitter',
 				'consumer-key', 'consumer-secret-test',
 				'http://www.example.org/10/auth_request',
 				'http://www.example.org/10/auth',
 				'http://www.example.org/10/access',
-				null, null, null
+				null,
+				null
 			);
 		} catch(OAuthError $e) {
 			# invalid service
@@ -64,7 +66,8 @@ class OAuth10Test extends TestCase {
 			'http://example.org/10/auth_request',
 			'http://example.org/10/auth',
 			'http://example.org/10/access',
-			null, null, 'http://localhost'
+			null,
+			'http://localhost'
 		);
 
 		# create OAuth1.0 permission instance

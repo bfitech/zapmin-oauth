@@ -3,6 +3,7 @@
 
 require_once(__DIR__ . '/OAuthFixture.php');
 
+
 use PHPUnit\Framework\TestCase;
 use BFITech\ZapCore\Logger;
 use BFITech\ZapCoreDev\RouterDev;
@@ -73,12 +74,14 @@ class OAuthRouteTest extends TestCase {
 		$ocore = new OAuthRoute10Patched($devcore, $store, true, $logger);
 		$ocore->token_name = 'testing';
 		$ocore->oauth_add_service(
-			'10', 'twitter',
+			'10',
+			'twitter',
 			'test-consumer-key', 'test-consumer-secret',
 			'http://example.org/10/auth_request',
 			'http://example.org/10/auth',
 			'http://example.org/10/access',
-			null, null, 'http://localhost'
+			null,
+			'http://localhost'
 		);
 		return $ocore;
 	}
@@ -95,12 +98,14 @@ class OAuthRouteTest extends TestCase {
 		$ocore = new OAuthRoute20Patched($devcore, $store, null, $logger);
 		$ocore->token_name = 'testing';
 		$ocore->oauth_add_service(
-			'20', 'reddit',
+			'20',
+			'reddit',
 			'test-consumer-key', 'test-consumer-secret',
 			null,
 			'http://example.org/20/auth',
 			'http://example.org/20/access',
-			'email', null, 'http://localhost'
+			'email',
+			'http://localhost'
 		);
 		return $ocore;
 	}
