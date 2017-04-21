@@ -1,5 +1,5 @@
 {
-  "name": "bfitech/zapoauth",
+  "name": "bfitech/zapmin-oauth",
   "description": "OAuth extension for zapmin.",
   "type": "library",
   "license": "MIT",
