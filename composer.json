@@ -12,6 +12,9 @@
   "require": {
     "bfitech/zapmin": "dev-master as 1.3.x-dev"
   },
+  "require-dev": {
+    "phpunit/phpunit": "4.8.*"
+  },
   "autoload": {
     "psr-4": {
       "BFITech\\ZapAdmin\\": "src",
