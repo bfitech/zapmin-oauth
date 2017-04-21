@@ -10,7 +10,7 @@
     }
   ],
   "require": {
-    "bfitech/zapmin": "dev-master"
+    "bfitech/zapmin": "dev-master as 1.3.x-dev"
   },
   "autoload": {
     "psr-4": {
@@ -21,6 +21,11 @@
   "autoload-dev": {
     "psr-4": {
       "BFITech\\ZapCoreDev\\": "vendor/bfitech"
+    }
+  },
+  "extra": {
+    "branch-alias": {
+      "dev-master": "1.3.x-dev"
     }
   }
 }
