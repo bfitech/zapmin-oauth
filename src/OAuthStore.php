@@ -39,40 +39,29 @@ abstract class OAuthStore extends AdminStore {
 	/**
 	 * Constructor.
 	 *
-	 * This takes parameters exactly the same with parent class.
-	 * Only use this following workflow on a router. Other methods
-	 * are sufficiently encapsulated.
-	 *
 	 * General workflow:
 	 *
-	 * 1. Instantiate OAuthRoute $so, let's call this super-oauth.
-	 * 2. Create a profile callback, i.e. profile retriever when
-	 *    authentication succeeds, which takes super-oauth as
-	 *    parameter and returns a username on success.
+	 * 1. Extend this class, e.g. OAuthRouteCustom, with method
+	 *    oauth_fetch_profile() overridden.
+	 * 2. Instantiate OAuthRouteCustom $so, let's call this
+	 *    super-oauth.
 	 * 3. Register services with $so->oauth_add_service() with
-	 *    appropriate configuration. This includes profile callback
-	 *    in 2).
-	 * 4. Use route handler $so->route_byway_auth() for generating
-	 *    access token.
-	 * 5. Use route handler $so->route_byway_callback() for accepting
-	 *    successful access token request.
-	 * 6. Subsequent API requests need access (and access secret
-	 *    tokens for OAuth1.0). These can be obtained with
-	 *    $so->adm_get_oauth_tokens(), which takes zap session token
-	 *    as parameter or in special case, null. e.g. when we
-	 *    need to get token inside profile callback 2).
-	 * 7. From super-oauth, we can instantiate the real oauth{1,2}
-	 *    class with $ac = $so->oauth_get_action_instance(), taking
-	 *    tokens provided by 6 as parameter(s). This instance
-	 *    has $ac->request() method with which we can do requests to
-	 *    the API service. For OAuth2.0, it also has $ac->refresh()
-	 *    for token refresh.
+	 *    appropriate configuration.
+	 * 4. Use $perm = $so->oauth_get_permission_instance() that will
+	 *    initiate sequence of acquiring access token, along with
+	 *    access token secret for OAuth1 and refresh token for OAuth2.
+	 * 5. When access token is obtained, use it to make API calls
+	 *    with $act = $so->oauth_get_action_instance(). $act->request()
+	 *    wraps regular API calls. Especially for OAuth2, there is
+	 *    $act->refresh() that requests access token given a
+	 *    previously-obtained refresh token.
+	 *
+	 * @param SQL $store An SQL connection.
+	 * @param bool $force_create_table When set to true, always
+	 *     recreate table.
+	 * @param Logger $logger Logger instance.
 	 *
 	 * @see AdminStore.
-	 * @note $expiration parameter is only used by parent to set
-	 *     table-based default value for usess.expire. Byway has its
-	 *     own expiration which is changeable by
-	 *     $this->adm_set_byway_expiration().
 	 */
 	public function __construct(
 		SQL $store, $force_create_table=null, Logger $logger=null
@@ -334,11 +323,11 @@ abstract class OAuthStore extends AdminStore {
 	 * Use this to populate user bio after user is successfully
 	 * authenticated.
 	 *
-	 * @param object Instance of OAuth action.
+	 * @param object $oauth_action Instance of OAuth action.
 	 * @param string $service_type Service type.
 	 * @param string $service_name Service name.
 	 * @param array $kwargs Additional arguments.
-	 * @return dict On successful authentication, a dict of the
+	 * @return On successful authentication, a dict of the
 	 *     form:
 	 *     @code
 	 *     (dict){
@@ -357,6 +346,28 @@ abstract class OAuthStore extends AdminStore {
 	}
 
 
+	/**
+	 * Add new user after successful authorization.
+	 *
+	 * @param string $service_type '10' for OAuth1, '20' for OAuth2.
+	 * @param string $service_name Service nickname, e.g. 'github'.
+	 * @param string $uname Username obtained by
+	 *     successful $this->oauth_fetch_profile().
+	 * @param string $access_token Access token.
+	 * @param string $access_token_secret Access token secret, OAuth1
+	 *     only.
+	 * @param string $refresh_token Refresh token, OAuth2 only.
+	 * @param dict $profile Additional profile data obtained by
+	 *     successful $this->oauth_fetch_profile().
+	 *
+	 * @return When succeeds, an array of the form:
+	 *     @code
+	 *     (array)[
+	 *         (int)errno,
+	 *         (string)session_token,
+	 *     ]
+	 *     @endcode
+	 */
 	public function oauth_add_user(
 		$service_type, $service_name, $uname, $access_token,
 		$access_token_secret=null, $refresh_token=null, $profile=[]
@@ -420,7 +431,6 @@ abstract class OAuthStore extends AdminStore {
 		$sql->insert('uoauth', $ins);
 
 		return [0, $session_token];
-
 	}
 
 

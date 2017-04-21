@@ -189,7 +189,7 @@ class OAuth20Action extends OAuthCommon {
 	 * access token since each service use it differently.
 	 *
 	 * @param array $kwargs http_client kwarg parameters. 
-	 * @param bool $nobearer If true, 'Authorization: Bearer TOKEN' is
+	 * @param bool $bearer If true, 'Authorization: Bearer TOKEN' is
 	 *     sent. Some services allow TOKEN sent via GET.
 	 */
 	public function request($kwargs, $bearer=true) {
@@ -210,7 +210,7 @@ class OAuth20Action extends OAuthCommon {
 	 *
 	 * @param bool $expect_json Whether JSON response is to be
 	 *     expected.
-	 * @param bool $nobearer If true, 'Authorization: Bearer TOKEN' is
+	 * @param bool $bearer If true, 'Authorization: Bearer TOKEN' is
 	 *     sent. Some services allow TOKEN sent via GET.
 	 * @todo Untested on live service.
 	 */

@@ -32,33 +32,14 @@ class OAuthRoute extends OAuthStore {
 	/**
 	 * Constructor.
 	 *
-	 * This takes parameters exactly the same with parent class.
 	 *
-	 * General workflow:
 	 *
-	 * 1. Instantiate OAuthRoute $o, let's call this super-oauth.
-	 * 2. Create a profile callback, i.e. profile retriever when
-	 *    authentication succeeds, which takes super-oauth as
-	 *    parameter and returns a username on success.
-	 * 3. Register services with $o->oauth_add_service() with
-	 *    appropriate configuration. This includes profile callback
-	 *    in 2).
-	 * 4. Use route handler $o->route_byway_auth() for generating
-	 *    access token.
-	 * 5. Use route handler $o->route_byway_callback() for accepting
-	 *    successful access token request.
-	 * 6. Subsequent API requests need access (and access secret
-	 *    tokens for OAuth1.0). These can be obtained with
-	 *    $o->adm_get_oauth_tokens(), which takes zap session token
-	 *    as parameter or in special case, null. e.g. when we
-	 *    need to get token inside profile callback 2).
-	 * 7. From super-oauth, we can instantiate the real oauth{1,2}
-	 *    class with $c = $o->oauth_get_action_instance(), taking
-	 *    tokens provided by 6 as parameter(s). This instance
-	 *    has $c->request() method with which we can do requests to
-	 *    the API service. For OAuth2.0, it also has $c->refresh()
-	 *    for token refresh.
+	 * @param Router $core A router instance.
+	 * @param SQL $store An SQL instance.
+	 * @param bool $force_create_table Always recreate table if true.
+	 * @param Logger $logger Logger instance.
 	 *
+	 * @see ./tests/htdocs-test/index for usage.
 	 * @see AdminRoute.
 	 */
 	public function __construct(
@@ -203,6 +184,15 @@ class OAuthRoute extends OAuthStore {
 		return $core->redirect($core->get_home());
 	}
 
+
+	/**
+	 * Wrapper for $this->core->route().
+	 *
+	 * @param string $path Standard zap router path.
+	 * @param callable $callback Standard zap router callback.
+	 * @param string|array $method Standard zap router request
+	 *     method(s).
+	 */
 	public function route($path, $callback, $method='GET') {
 		$this->core->route($path, $callback, $method);
 	}
