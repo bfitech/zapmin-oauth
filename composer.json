@@ -9,29 +9,12 @@
       "email": "rs@cogsci.bandungfe.net"
     }
   ],
-  "repositories": [
-    {
-      "type": "vcs",
-      "url": "git@bfinews.com:bfin/zapcore.git",
-      "minimum-stability": "dev"
-    },
-    {
-      "type": "vcs",
-      "url": "git@bfinews.com:bfin/zapstore.git",
-      "minimum-stability": "dev"
-    },
-    {
-      "type": "vcs",
-      "url": "git@bfinews.com:bfin/zapmin.git",
-      "minimum-stability": "dev"
-    }
-  ],
-  "minimum-stability": "dev",
   "require": {
-    "bfitech/zapmin": "1.0.*"
+    "bfitech/zapmin": "dev-master"
   },
   "autoload": {
     "psr-4": {
+      "BFITech\\ZapAdmin\\": "src",
       "BFITech\\ZapOAuth\\": "src"
     }
   }

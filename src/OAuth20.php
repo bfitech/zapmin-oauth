@@ -3,7 +3,8 @@
 
 namespace BFITech\ZapOAuth;
 
-use BFITech\ZapCore as zc;
+
+use BFITech\ZapCore\Common;
 
 
 /**
@@ -16,11 +17,13 @@ class OAuth20Permission extends OAuthCommon {
 	/** Client secret, equivalent to consumer secret in OAuth 1.0. */
 	protected $client_secret = null;
 
+	/** Token URL. */
 	private $url_request_token_auth = null;
+	/** Access token URL. */
 	private $url_access_token = null;
-
+	/** Callback URL. */
 	private $url_callback = null;
-
+	/** Scope. */
 	private $scope = null;
 
 	/**
@@ -76,7 +79,7 @@ class OAuth20Permission extends OAuthCommon {
 		$redirect_uri = $this->callback_uri;
 
 		$get = $args['get'];
-		if (!zc\Common::check_dict($get, ['code', 'state']))
+		if (!Common::check_idict($get, ['code', 'state']))
 			# We only check 'state' existence. We don't actually
 			# match it with previously-generated one in auth page.
 			return [2];
@@ -91,11 +94,9 @@ class OAuth20Permission extends OAuthCommon {
 		];
 
 		# Auth Basic hack for yahoo, reddit, linkedin
-		# @fixme: Only tested on LinkedIn as of now. Not sure if
-		#     still accurate. A change on this breaks the
-		#     encapsulation provided by this method.
+		# @fixme: Only tested on LinkedIn long time ago.
 		foreach(['yahoo', 'reddit', 'linkedin'] as $srv) {
-			if (strstr(substr($url, 0, 20), $srv) !== false) {
+			if (strstr(substr($url, 0, 20), $srv) < 12) {
 				$headers[] = 'Authorization: Basic ' . base64_encode(
 					$this->client_id . ':' . $this->client_secret);
 			}
@@ -116,7 +117,7 @@ class OAuth20Permission extends OAuthCommon {
 			'state' => self::generate_nonce(),
 		];
 
-		$resp = zc\Common::http_client([
+		$resp = $this->http_client([
 			'url' => $url,
 			'method' => 'POST',
 			'headers' => $headers,
@@ -127,13 +128,13 @@ class OAuth20Permission extends OAuthCommon {
 			return [3];
 
 		# windows stops here, they don't need access token
-		if (strstr($url, 'microsoftonline') !== false)
-			return [0, $ret];
+		#if (strstr($url, 'microsoftonline') !== false)
+		#	return [0, $ret];
 
 		# OAuth2.0 may send 'refresh_token' key. Every services may
 		# add various additional values, e.g. normalized scope for
 		# Github. We'll only check 'access_token'.
-		if (!zc\Common::check_dict($resp[1], ['access_token']))
+		if (!Common::check_idict($resp[1], ['access_token']))
 			return [4];
 
 		# Store 'access_token' for later API calls.
@@ -145,7 +146,7 @@ class OAuth20Permission extends OAuthCommon {
 /**
  * OAuth20Action class.
  */
-class OAuth20Action {
+class OAuth20Action extends OAuthCommon {
 
 	private $access_token = null;
 	private $refresh_token = null;
@@ -166,19 +167,19 @@ class OAuth20Action {
 	 * @param string $refresh_token User refresh token returned by
 	 *     site_callback() or retrieved from some storage. Only required
 	 *     by refresh().
-	 * @param string $url_request_token_auth Request token authorization URL
+	 * @param string $url_access_token Access token authorization URL
 	 *     as in Oauth20Permission. Only required by refresh().
 	 */
 	public function __construct(
 		$consumer_key, $consumer_secret,
 		$access_token, $refresh_token=null,
-		$url_request_token_auth=null
+		$url_access_token=null
 	) {
 		$this->consumer_key = $consumer_key;
 		$this->consumer_secret = $consumer_secret;
 		$this->access_token = $access_token;
 		$this->refresh_token = $access_token;
-		$this->url_request_token_auth = $url_request_token_auth;
+		$this->url_access_token = $url_access_token;
 	}
 	
 	/**
@@ -187,16 +188,21 @@ class OAuth20Action {
 	 * This completely lets a caller to do whatever it wants with
 	 * access token since each service use it differently.
 	 *
-	 * @param array $kwargs Common::http_client kwarg parameter. 
+	 * @param array $kwargs http_client kwarg parameters. 
+	 * @param bool $nobearer If true, 'Authorization: Bearer TOKEN' is
+	 *     sent. Some services allow TOKEN sent via GET.
 	 */
-	public function request($kwargs) {
+	public function request($kwargs, $bearer=true) {
 		if (!isset($kwargs['headers']))
 			$kwargs['headers'] = [];
+		if ($bearer)
+			$kwargs['headers'][] = 'Authorization: Bearer ' .
+				$this->access_token;
 		if (isset($kwargs['expect_json']) && $kwargs['expect_json']) {
 			$kwargs['headers'][] = 'Accept: application/json';
 			$kwargs['headers'][] = 'Expect: ';
 		}
-		return zc\Common::http_client($kwargs);
+		return $this->http_client($kwargs);
 	}
 
 	/**
@@ -204,19 +210,23 @@ class OAuth20Action {
 	 *
 	 * @param bool $expect_json Whether JSON response is to be
 	 *     expected.
-	 * @todo Untested.
+	 * @param bool $nobearer If true, 'Authorization: Bearer TOKEN' is
+	 *     sent. Some services allow TOKEN sent via GET.
+	 * @todo Untested on live service.
 	 */
-	public function refresh($expect_json) {
-		if (!$this->refresh_token || !$this->url_request_token_auth)
+	public function refresh($expect_json=true, $bearer=true) {
+		if (!$this->refresh_token || !$this->url_access_token)
 			return null;
 		$headers = ['Content-Type: application/x-www-form-urlencoded'];
+		if ($bearer)
+			$headers[] = 'Authorization: Bearer ' . $this->access_token;
 		if ($expect_json) {
 			$headers[] = 'Accept: application/json';
 			$headers[] = 'Expect: ';
 		}
-		return zc\Common::http_client([
+		return $this->http_client([
 			'method' => "POST",
-			'url' => $this->url_request_token_auth,
+			'url' => $this->url_access_token,
 			'headers' => $headers,
 			'post' => [
 				'client_id' => $this->consumer_key,
@@ -227,5 +237,6 @@ class OAuth20Action {
 			'expect_json' => $expect_json,
 		]);
 	}
+
 }
 

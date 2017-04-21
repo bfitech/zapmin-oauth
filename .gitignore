@@ -5,6 +5,8 @@
 *.conf
 *.ini
 *.bak
+*.sq3
+composer.lock
 
 /docs/
 /tests/htdocs-test/bower_components/

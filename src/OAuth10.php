@@ -3,7 +3,8 @@
 
 namespace BFITech\ZapOAuth;
 
-use BFITech\ZapCore as zc;
+
+use BFITech\ZapCore\Common;
 
 
 /**
@@ -130,7 +131,7 @@ class OAuth10Permission extends OAuthCommon {
 			'Expect: ',
 		];
 
-		$resp = zc\Common::http_client([
+		$resp = $this->http_client([
 			'url' => $this->url_request_token,
 			'method' => 'POST',
 			'headers' => $headers
@@ -139,7 +140,7 @@ class OAuth10Permission extends OAuthCommon {
 			return false;
 
 		parse_str($resp[1], $args);
-		if (!zc\Common::check_dict($args, [
+		if (!Common::check_idict($args, [
 			'oauth_token',
 			'oauth_token_secret',
 			'oauth_callback_confirmed'
@@ -154,19 +155,27 @@ class OAuth10Permission extends OAuthCommon {
 	/**
 	 * Get request token authentication URL.
 	 *
-	 * The URL will tell user to authorize the app in remote service. If user
-	 * accepts, the URL will redirect to callback_url along with appropriate
-	 * query string containing 'oauth_token' and 'oauth_verifier'.
+	 * The URL will tell user to authorize the app in remote service.
+	 * If user accepts, the URL will redirect to callback_url along
+	 * with appropriate query string containing 'oauth_token' and
+	 * 'oauth_verifier'.
 	 *
-	 * @param string $oauth_request_token The 'oauth_token' returned by
+	 * @param string $oauth_token The 'oauth_token' returned by
 	 *     previous request_token().
+	 * @param string|null $oauth_verifier The 'oauth_verifier' returned by
+	 *     previous request_token(), if exists.
 	 */
-	protected function authenticate_request_token($oauth_request_token) {
-		return sprintf(
+	protected function authenticate_request_token(
+		$oauth_token, $oauth_verifier=null
+	) {
+		$url = sprintf(
 			'%s?oauth_token=%s',
 			$this->url_request_token_auth,
-			rawurlencode($oauth_request_token)
+			rawurlencode($oauth_token)
 		);
+		if ($oauth_verifier)
+			$url .= '&oauth_verifier=' . rawurlencode($oauth_verifier);
+		return $url;
 	}
 
 	/**
@@ -175,8 +184,8 @@ class OAuth10Permission extends OAuthCommon {
 	 * A chain of request_token() and authenticate_request_token().
 	 * Use this in a route.
 	 *
-	 * @return string A URL that must be opened by client, typically in a
-	 *     new window. After some UI actions, the window will load
+	 * @return string A URL that must be opened by client, typically in
+	 *     a new window. After some UI actions, the window will load
 	 *     url_callback that can be handled by site_callback().
 	 */
 	public function get_access_token_url() {
@@ -184,7 +193,12 @@ class OAuth10Permission extends OAuthCommon {
 		if (!$resp)
 			return null;
 		extract($resp, EXTR_SKIP);
-		return $this->authenticate_request_token($oauth_token);
+		if (!isset($oauth_token))
+			return null;
+		if (!isset($oauth_verifier))
+			$oauth_verifier = null;
+		return $this->authenticate_request_token(
+			$oauth_token, $oauth_verifier);
 	}
 
 	/**
@@ -207,10 +221,7 @@ class OAuth10Permission extends OAuthCommon {
 
 		$get = $args['get'];
 
-		if (!zc\Common::check_dict($get, [
-			'oauth_token',
-			'oauth_verifier'
-		]))
+		if (!Common::check_idict($get, ['oauth_token']))
 			return [2];
 		extract($get, EXTR_SKIP);
 
@@ -224,11 +235,13 @@ class OAuth10Permission extends OAuthCommon {
 			'Expect: ',
 		];
 
-		$post_data = [
+		$post_data = [];
+		if (isset($get['oauth_verifier'])) {
 			# required by 1.0a
-			'oauth_verifier' => $oauth_verifier,
-		];
-		$resp = zc\Common::http_client([
+			$post_data['oauth_verifier'] = $oauth_verifier;
+		}
+
+		$resp = $this->http_client([
 			'url' => $this->url_access_token,
 			'method' => 'POST',
 			'headers' => $headers,
@@ -238,7 +251,7 @@ class OAuth10Permission extends OAuthCommon {
 			return [3];
 
 		parse_str($resp[1], $args);
-		if (false === $args = zc\Common::check_dict($args, [
+		if (false === $args = Common::check_idict($args, [
 			'oauth_token',
 			'oauth_token_secret',
 		]))
@@ -289,7 +302,7 @@ class OAuth10Action extends OAuth10Permission {
 	 * This is all we need to perform authorized operations. The URL,
 	 * method and arguments depend on respective service.
 	 *
-	 * @param array $kwargs Common::http_client kwarg parameter. 
+	 * @param array $kwargs http_client kwargs parameter. 
 	 * @todo This won't stop $kwargs['url'] from having query
 	 *     string. It must be isolated in $kwargs['get'] and fed
 	 *     to extra params of $this->generate_auth_header() so
@@ -297,7 +310,7 @@ class OAuth10Action extends OAuth10Permission {
 	 *     string will fail the signing.
 	 */
 	public function request($kwargs) {
-		if (!zc\Common::check_dict($kwargs, ['method', 'url']))
+		if (!Common::check_idict($kwargs, ['method', 'url']))
 			return [-1, null];
 		$bstr_raw = ['oauth_token' => $this->access_token];
 		if (isset($kwargs['get']) && $kwargs['get'])
@@ -310,7 +323,7 @@ class OAuth10Action extends OAuth10Permission {
 			$kwargs['headers'] = [];
 		$kwargs['headers'][] = "Authorization: " . $auth_header;
 		$kwargs['headers'][] = "Expect: ";
-		return zc\Common::http_client($kwargs);
+		return $this->http_client($kwargs);
 	}
 
 }
