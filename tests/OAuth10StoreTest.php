@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use BFITech\ZapCore\Common;
 use BFITech\ZapCore\Logger;
 use BFITech\ZapStore\SQLite3;
+use BFITech\ZapAdmin\AdminStore;
 use BFITech\ZapAdmin\OAuthStore;
 use BFITech\ZapAdmin\OAuthError;
 
@@ -27,14 +28,11 @@ class OAuth10Store extends OAuthStore {
 	}
 }
 
+class AdminStore10Tab extends AdminStore {}
 
 class OAuth10Test extends TestCase {
 
-	protected static $sql;
-	protected static $adm;
 	protected static $logger;
-
-	protected static $pwdless_uid;
 
 	public static function setUpBeforeClass() {
 		self::$logger = new Logger(Logger::ERROR, '/dev/null');
@@ -43,12 +41,13 @@ class OAuth10Test extends TestCase {
 	public function test_oauth10_store() {
 		$store = new SQLite3(
 			['dbname' => ':memory:'], self::$logger);
-		$adm = new OAuth10Store($store, null, true, self::$logger);
+		new AdminStore10Tab($store);
+		$adm = new OAuth10Store($store, true, self::$logger);
 
 		try {
 			$adm->oauth_add_service(
+				'30', 'twitter',
 				'consumer-key', 'consumer-secret-test',
-				'twitter', '30',
 				'http://www.example.org/10/auth_request',
 				'http://www.example.org/10/auth',
 				'http://www.example.org/10/access',
@@ -59,9 +58,9 @@ class OAuth10Test extends TestCase {
 		}
 
 		$adm->oauth_add_service(
+			'10', 'twitter',
 			'consumer-key-test',
 			'consumer-secret-test',
-			'twitter', '10',
 			'http://example.org/10/auth_request',
 			'http://example.org/10/auth',
 			'http://example.org/10/access',

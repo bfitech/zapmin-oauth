@@ -75,8 +75,7 @@ abstract class OAuthStore extends AdminStore {
 	 *     $this->adm_set_byway_expiration().
 	 */
 	public function __construct(
-		SQL $store, $expiration=null, $force_create_table=null,
-		Logger $logger=null
+		SQL $store, $force_create_table=null, Logger $logger=null
 	) {
 		# Use $this->adm_set_byway_expiration() to finetune expiration.
 
@@ -85,17 +84,13 @@ abstract class OAuthStore extends AdminStore {
 		$this->dbtype = $store->get_connection_params()['dbtype'];
 
 		# check if udata table exists
-		$create_udata = false;
 		try {
 			$test = $store->query("SELECT 1 FROM udata LIMIT 1");
-			if ($force_create_table)
-				$create_udata = true;
 		} catch(SQLError $e) {
-			$create_udata = true;
+			throw new OAuthError("Zapmin udata table not ready.");
 		}
-		if ($create_udata)
-			parent::__construct($store, $expiration,
-				$force_create_table, $logger);
+		# must execute parent constructor to initiate some props
+		parent::__construct($store, null, null, $logger);
 
 		$this->oauth_create_table($force_create_table);
 	}
@@ -205,12 +200,12 @@ abstract class OAuthStore extends AdminStore {
 	/**
 	 * Register available services.
 	 *
+	 * @param string $service_type OAuth version, '10' or '20'.
+	 * @param string $service_name A nickname of the service, short
+	 *     alphabetic lowercase, e.g.: github.
 	 * @param string $consumer_key The key you obtain from the service.
 	 * @param string $consumer_secret The secret you obtain along with
 	 *     consumer key.
-	 * @param string $service_name A nickname of the service, short
-	 *     alphabetic lowercase, e.g.: github.
-	 * @param string $service_type OAuth version, '10' or '20'.
 	 * @param string $url_token Token request URL. Not used by OAuth2.0.
 	 * @param string $url_token_auth Token request authentication URL.
 	 * @param string $url_access Access token URL for callback URL.
@@ -221,8 +216,8 @@ abstract class OAuthStore extends AdminStore {
 	 *     site callback.
 	 */
 	public function oauth_add_service(
+		$service_type, $service_name,
 		$consumer_key, $consumer_secret,
-		$service_name, $service_type,
 		$url_token, $url_token_auth, $url_access,
 		$scope, $url_callback
 	) {
@@ -264,17 +259,25 @@ abstract class OAuthStore extends AdminStore {
 			return null;
 		$conf = $this->oauth_service_configs[$key];
 		extract($conf, EXTR_SKIP);
-		if ($service_type == '10')
-			return new zo\OAuth10Permission(
+		if ($service_type == '10') {
+			$perm = new zo\OAuth10Permission(
 				$consumer_key, $consumer_secret,
 				$url_request_token, $url_request_token_auth,
 				$url_access_token, $url_callback
 			);
-		return new zo\OAuth20Permission(
-			$consumer_key, $consumer_secret,
-			$url_request_token_auth, $url_access_token,
-			$url_callback, $scope
-		);
+		} else {
+			$perm = new zo\OAuth20Permission(
+				$consumer_key, $consumer_secret,
+				$url_request_token_auth, $url_access_token,
+				$url_callback, $scope
+			);
+		}
+		if (method_exists($this, 'http_client')) {
+			$perm->http_client_custom = function($kwargs) {
+				return $this->http_client($kwargs);
+			};
+		}
+		return $perm;
 	}
 
 	/**
@@ -305,16 +308,24 @@ abstract class OAuthStore extends AdminStore {
 			return null;
 		$conf = $this->oauth_service_configs[$key];
 		extract($conf, EXTR_SKIP);
-		if ($service_type == '10')
-			return new zo\OAuth10Action(
+		if ($service_type == '10') {
+			$act = new zo\OAuth10Action(
 				$conf['consumer_key'], $conf['consumer_secret'],
 				$access_token, $access_token_secret
 			);
-		return new zo\OAuth20Action(
-			$conf['consumer_key'], $conf['consumer_secret'],
-			$access_token, $refresh_token,
-			$conf['url_access_token']
-		);
+		} else {
+			$act = new zo\OAuth20Action(
+				$conf['consumer_key'], $conf['consumer_secret'],
+				$access_token, $refresh_token,
+				$conf['url_access_token']
+			);
+		}
+		if (method_exists($this, 'http_client')) {
+			$act->http_client_custom = function($kwargs) {
+				return $this->http_client($kwargs);
+			};
+		}
+		return $act;
 	}
 
 	/**

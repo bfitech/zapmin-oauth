@@ -17,5 +17,10 @@
       "BFITech\\ZapAdmin\\": "src",
       "BFITech\\ZapOAuth\\": "src"
     }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "BFITech\\ZapCoreDev\\": "vendor/bfitech"
+    }
   }
 }

@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use BFITech\ZapCore\Common;
 use BFITech\ZapCore\Logger;
 use BFITech\ZapStore\SQLite3;
+use BFITech\ZapAdmin\AdminStore;
 use BFITech\ZapAdmin\OAuthStore;
 use BFITech\ZapAdmin\OAuthError;
 
@@ -27,14 +28,11 @@ class OAuth20Store extends OAuthStore {
 	}
 }
 
+class AdminStore20Tab extends AdminStore {}
 
 class OAuth20Test extends TestCase {
 
-	protected static $sql;
-	protected static $adm;
 	protected static $logger;
-
-	protected static $pwdless_uid;
 
 	public static function setUpBeforeClass() {
 		self::$logger = new Logger(Logger::ERROR, '/dev/null');
@@ -43,12 +41,13 @@ class OAuth20Test extends TestCase {
 	public function test_oauth20_store() {
 		$store = new SQLite3(
 			['dbname' => ':memory:'], self::$logger);
-		$adm = new OAuth20Store($store, null, true, self::$logger);
+		new AdminStore20Tab($store);
+		$adm = new OAuth20Store($store, true, self::$logger);
 
 		$adm->oauth_add_service(
+			'20', 'reddit',
 			'consumer-key-test',
 			'consumer-secret-test',
-			'reddit', '20',
 			null,
 			'http://reddit.example.org/20/auth',
 			'http://reddit.example.org/20/access',

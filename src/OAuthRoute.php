@@ -7,6 +7,7 @@ namespace BFITech\ZapAdmin;
 use BFITech\ZapCore\Common;
 use BFITech\ZapCore\Router;
 use BFITech\ZapCore\Logger;
+use BFITech\ZapStore\SQL;
 
 
 /**
@@ -18,6 +19,15 @@ class OAuthRoute extends OAuthStore {
 	 * Core instance.
 	 */
 	public $core;
+
+	/**
+	 * Token name.
+	 *
+	 * @fixme Must manually store here since adm_get_token_name()
+	 *     unfortunately belongs to AdminRoute which is not
+	 *     inherited by this class.
+	 */
+	public $token_name;
 
 	/**
 	 * Constructor.
@@ -52,19 +62,11 @@ class OAuthRoute extends OAuthStore {
 	 * @see AdminRoute.
 	 */
 	public function __construct(
-		Router $core, SQL $store,
-		$token_name=null, $route_prefix=null,
-		$force_create_table=false, Logger $logger=null
+		Router $core, SQL $store, $force_create_table=null,
+		Logger $logger=null
 	) {
 		$this->core = $core;
-		parent::__construct([
-			'core_instance' => $core,
-			'store_instance' => $store,
-			'expiration' => $expiration,
-			'token_name' => $token_name,
-			'route_prefix' => $route_prefix,
-			'force_create_table' => $force_create_table,
-		]);
+		parent::__construct($store, $force_create_table, $logger);
 	}
 
 	# route handlers
@@ -82,12 +84,12 @@ class OAuthRoute extends OAuthStore {
 		if (!Common::check_idict($params,
 			['service_name', 'service_type'])
 		) {
-			throw new OAuthError("Invalid path params.");
+			return $core::pj([2, 0], 404);
 		}
 		extract($params, EXTR_SKIP);
 
 		$perm = $this->oauth_get_permission_instance(
-			$service_name, $service_type);
+			$service_type, $service_name);
 		if (!$perm)
 			# service unknown
 			return $core::pj([2, 0], 404);
@@ -103,12 +105,13 @@ class OAuthRoute extends OAuthStore {
 	 * Wrapper for callback error handler.
 	 */
 	private function _route_byway_failed() {
+		$core = $this->core;
 		# fail redirect available
 		if ($this->oauth_callback_fail_redirect)
-			return $this->core->redirect(
+			return $core->redirect(
 				$this->oauth_callback_fail_redirect);
 		# no redirect, let's call it server error
-		return $this->core->abort(503);
+		return $core->abort(503);
 	}
 
 	/**
@@ -128,24 +131,18 @@ class OAuthRoute extends OAuthStore {
 	 *     @endcode
 	 */
 	public function route_byway_callback($args) {
+		$core = $this->core;
+
 		$params = $args['params'];
 		if (!Common::check_idict($params,
 			['service_name', 'service_type'])
 		) {
-			throw new OAuthError("Invalid path params.");
+			return $core->abort(404);
 		}
 		extract($params, EXTR_SKIP);
 
-		$core = $this->core;
-
-		$key = $service_name . '-' . $service_type;
-		if (!isset($this->oauth_service_configs[$key]))
-			# key invalid
-			return null;
-		$conf = $this->oauth_service_configs[$key];
-
 		$perm = $this->oauth_get_permission_instance(
-			$service_name, $service_type);
+			$service_type, $service_name);
 		if (!$perm)
 			# service unknown
 			return $core->abort(404);
@@ -163,23 +160,26 @@ class OAuthRoute extends OAuthStore {
 		if (!isset($refresh_token))
 			# OAuth2.0 only
 			$refresh_token = null;
-		$this->access_token = $access_token;
-		$this->access_token_secret = $access_token_secret;
-		$this->refresh_token = $refresh_token;
+
+		$act = $this->oauth_get_action_instance(
+			$service_type, $service_name, $access_token,
+			$access_token_secret, $refresh_token);
 
 		# fetch profile, specific to each service
 
-		$profile = $this->oauth_fetch_profile();
+		$profile = $this->oauth_fetch_profile($act,
+			$service_type, $service_name);
 		if (!$profile)
 			return $this->_route_byway_failed();
 		if (!isset($profile['uname']))
 			return $this->_route_byway_failed();
-
 		$uname = $profile['uname'];
 
-		$rv = $this->oauth_add_user($service_type, $service_name,
+		$rv = $this->oauth_add_user(
+			$service_type, $service_name,
 			$uname, $access_token, $access_token_secret,
-			$refresh_token, $profile);
+			$refresh_token, $profile
+		);
 		if ($rv[0] !== 0)
 			return $this->_route_byway_failed();
 
@@ -189,7 +189,10 @@ class OAuthRoute extends OAuthStore {
 		# always autologin on success
 
 		$this->adm_set_user_token($session_token);
-		setcookie($this->adm_get_token_name(), $session_token,
+		# @fixme Proper token name getter.
+		$token_name = $this->token_name
+			? $this->token_name : 'zapoauth';
+		$core::send_cookie($token_name, $session_token,
 			$expiration, '/');
 
 		# success
@@ -198,6 +201,10 @@ class OAuthRoute extends OAuthStore {
 			return $core->redirect($this->oauth_callback_ok_redirect);
 		# or just go home
 		return $core->redirect($core->get_home());
+	}
+
+	public function route($path, $callback, $method='GET') {
+		$this->core->route($path, $callback, $method);
 	}
 }
 
