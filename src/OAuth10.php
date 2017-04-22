@@ -192,7 +192,7 @@ class OAuth10Permission extends OAuthCommon {
 		$resp = $this->request_token();
 		if (!$resp)
 			return null;
-		extract($resp, EXTR_SKIP);
+		extract($resp);
 		if (!isset($oauth_token))
 			return null;
 		if (!isset($oauth_verifier))
@@ -223,7 +223,7 @@ class OAuth10Permission extends OAuthCommon {
 
 		if (!Common::check_idict($get, ['oauth_token']))
 			return [2];
-		extract($get, EXTR_SKIP);
+		extract($get);
 
 		$auth_header = $this->generate_auth_header(
 			$this->url_access_token, 'POST',

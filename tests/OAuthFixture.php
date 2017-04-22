@@ -17,7 +17,7 @@ class ServiceFixture {
 	}
 
 	public static function oauth10($args) {
-		extract($args, EXTR_SKIP);
+		extract($args);
 		if ($method == 'POST') {
 			# 1) auth request; not available in OAuth2
 			if (self::is_in('/10/auth_request', $url)) {
@@ -60,7 +60,7 @@ class ServiceFixture {
 	}
 
 	public static function oauth20($args) {
-		extract($args, EXTR_SKIP);
+		extract($args);
 		if ($method == 'POST') {
 			# 2) access, also used by refresh
 			if (self::is_in('/20/access', $url)) {

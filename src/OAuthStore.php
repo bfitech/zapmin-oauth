@@ -247,7 +247,7 @@ abstract class OAuthStore extends AdminStore {
 			# key invalid
 			return null;
 		$conf = $this->oauth_service_configs[$key];
-		extract($conf, EXTR_SKIP);
+		extract($conf);
 		if ($service_type == '10') {
 			$perm = new zo\OAuth10Permission(
 				$consumer_key, $consumer_secret,
@@ -296,7 +296,7 @@ abstract class OAuthStore extends AdminStore {
 			# key invalid
 			return null;
 		$conf = $this->oauth_service_configs[$key];
-		extract($conf, EXTR_SKIP);
+		extract($conf);
 		if ($service_type == '10') {
 			$act = new zo\OAuth10Action(
 				$conf['consumer_key'], $conf['consumer_secret'],

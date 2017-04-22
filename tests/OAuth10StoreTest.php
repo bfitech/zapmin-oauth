@@ -115,7 +115,7 @@ class OAuth10Test extends TestCase {
 		$this->assertEquals($rv[0], 0);
 		$this->assertSame(array_keys($rv[1]),
 			['access_token', 'access_token_secret']);
-		extract($rv[1], EXTR_SKIP);
+		extract($rv[1]);
 
 		# create OAuth1.0 action instance
 		$act = $adm->oauth_get_action_instance('10', 'twitter',

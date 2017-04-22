@@ -97,7 +97,7 @@ class OAuth20Test extends TestCase {
 		$this->assertEquals($rv[0], 0);
 		$this->assertNotFalse(Common::check_idict($rv[1],
 			['access_token', 'refresh_token']));
-		extract($rv[1], EXTR_SKIP);
+		extract($rv[1]);
 
 		# create OAuth1.0 action instance
 		$act = $adm->oauth_get_action_instance('20', 'reddit',

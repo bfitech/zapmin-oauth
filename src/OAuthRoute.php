@@ -67,7 +67,7 @@ class OAuthRoute extends OAuthStore {
 		) {
 			return $core::pj([2, 0], 404);
 		}
-		extract($params, EXTR_SKIP);
+		extract($params);
 
 		$perm = $this->oauth_get_permission_instance(
 			$service_type, $service_name);
@@ -120,7 +120,7 @@ class OAuthRoute extends OAuthStore {
 		) {
 			return $core->abort(404);
 		}
-		extract($params, EXTR_SKIP);
+		extract($params);
 
 		$perm = $this->oauth_get_permission_instance(
 			$service_type, $service_name);
@@ -131,7 +131,7 @@ class OAuthRoute extends OAuthStore {
 		$ret = $perm->site_callback($args);
 		if ($ret[0] !== 0)
 			return $this->_route_byway_failed();
-		extract($ret[1], EXTR_SKIP);
+		extract($ret[1]);
 
 		# save obtained tokens to properties
 

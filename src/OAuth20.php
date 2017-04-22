@@ -83,7 +83,7 @@ class OAuth20Permission extends OAuthCommon {
 			# We only check 'state' existence. We don't actually
 			# match it with previously-generated one in auth page.
 			return [2];
-		extract($get, EXTR_SKIP);
+		extract($get);
 
 		$url = $this->url_access_token;
 
