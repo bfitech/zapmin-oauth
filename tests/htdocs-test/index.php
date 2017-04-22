@@ -34,6 +34,7 @@ class OAuthRouteHTTP extends OAuthRoute {
 	}
 
 	public function route_logout($args=null) {
+		$core = $this->core;
 		$udata = $this->adm_status();
 		if (!$udata)
 			return $core::pj([1, []], 403);
@@ -56,8 +57,7 @@ $acore = new AdminRoute([
 $ocore = new OAuthRouteHTTP($core, $store, null, $logger);
 
 
-# Make sure server config exists. Use sample to for a
-# quick start.
+# Make sure server config exists. Use sample for a quick start.
 
 $confl = __DIR__ . '/config.json';
 if (!is_file($confl))
@@ -67,19 +67,8 @@ $config = json_decode(file_get_contents($confl));
 # NOTE: Make sure callback URLs in the configuration and on
 # remote server match.
 
-# OAuth1.0, e.g. Twitter
-$s10 = $config[0];
-$ocore->oauth_add_service(
-	$s10[0], $s10[1], $s10[2], $s10[3], $s10[4],
-	$s10[5], $s10[6], $s10[7], $s10[8]
-);
-
-# OAuth2.0, e.g. Google
-$s20 = $config[1];
-$ocore->oauth_add_service(
-	$s20[0], $s20[1], $s20[2], $s20[3], $s20[4],
-	$s20[5], $s20[6], $s20[7], $s20[8]
-);
+foreach ($config as $cf)
+	call_user_func_array([$ocore, 'oauth_add_service'], $cf);
 
 $ocore->route('/', function($args) use($ocore) {
 	require('home.php');
