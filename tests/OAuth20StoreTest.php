@@ -138,6 +138,7 @@ class OAuth20Test extends TestCase {
 		# check if we're truly signed in
 		$adm->adm_set_user_token($session_token);
 		$rv = $adm->adm_status();
+		$this->assertEquals($rv['uname'], '+john:oauth20[reddit]');
 		$this->assertEquals($rv['fname'], 'John Smith');
 
 		# invalid session token

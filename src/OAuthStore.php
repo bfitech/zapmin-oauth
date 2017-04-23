@@ -373,9 +373,10 @@ abstract class OAuthStore extends AdminStore {
 		$access_token_secret=null, $refresh_token=null, $profile=[]
 	) {
 		# build passwordless account using obtained uname with uservice
-		# having the form %service_name%[%service_type%]
+		# having the form 'oauth%service_type%[%service_name%]
 
-		$uservice = sprintf('%s[%s]', $service_name, $service_type);
+		$uname = rawurlencode($uname);
+		$uservice = sprintf('oauth%s[%s]', $service_type, $service_name);
 		$args['service'] = [
 			'uname' => $uname,
 			'uservice' => $uservice,
