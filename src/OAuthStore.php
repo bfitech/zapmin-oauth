@@ -11,13 +11,19 @@ use BFITech\ZapStore\SQLError;
 use BFITech\ZapOAuth as zo;
 
 
+/**
+ * OAuthError class.
+ */
 class OAuthError extends \Exception {
-	/** OAuth Add user */
-	# saving data fails, most likely server error
+
+	/**
+	 * Saving user data failed, most likely server error.
+	 */
 	const SAVING_DATA_FAILED = 0x01;
 
-	# failed to get token
+	/** Failed to get token. */
 	const MISSING_TOKEN = 0x02;
+
 }
 
 
@@ -395,10 +401,9 @@ abstract class OAuthStore extends AdminStore {
 		if ($retval[0] !== 0)
 			# saving data fails, most likely server error
 			return [OAuthError::SAVING_DATA_FAILED];
-			#return $this->_route_byway_failed();
 		if (!isset($retval[1]) || !isset($retval[1]['token']))
+			# token not received
 			return [OAuthError::MISSING_TOKEN];
-			#return $this->_route_byway_failed();
 		$udata = $retval[1];
 		$session_token = $udata['token'];
 

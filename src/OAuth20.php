@@ -6,17 +6,19 @@ namespace BFITech\ZapOAuth;
 
 use BFITech\ZapCore\Common;
 
+
 /**
- * Error Class
+ * Error class.
  */
 class OAuth20PermissionError extends \Exception {
-	/** Missing Dict */
-	const MISSING_DICT = 0x0100;
-	/** Response code is not 200 */
-	const ERROR_RESPONSE = 0x0101;
-	/** Missing Token */
+	/** Missing dict. */
+	const INCOMPLETE_DATA = 0x0100;
+	/** Provider doesn't return HTTP 200. */
+	const SERVICE_ERROR = 0x0101;
+	/** Missing token. */
 	const MISSING_TOKEN = 0x0102;
 }
+
 
 /**
  * OAuth2.0 class.
@@ -93,7 +95,7 @@ class OAuth20Permission extends OAuthCommon {
 		if (!Common::check_idict($get, ['code', 'state']))
 			# We only check 'state' existence. We don't actually
 			# match it with previously-generated one in auth page.
-			return [OAuth20PermissionError::MISSING_DICT];
+			return [OAuth20PermissionError::INCOMPLETE_DATA];
 		extract($get);
 
 		$url = $this->url_access_token;
@@ -136,7 +138,7 @@ class OAuth20Permission extends OAuthCommon {
 			'expect_json' => true
 		]);
 		if ($resp[0] !== 200)
-			return [OAuth20PermissionError::ERROR_RESPONSE];
+			return [OAuth20PermissionError::SERVICE_ERROR];
 
 		# windows stops here, they don't need access token
 		#if (strstr($url, 'microsoftonline') !== false)
