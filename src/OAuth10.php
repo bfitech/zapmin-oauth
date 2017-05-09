@@ -6,6 +6,17 @@ namespace BFITech\ZapOAuth;
 
 use BFITech\ZapCore\Common;
 
+/**
+ * Error Class
+ */
+class OAuth10PermissionError extends \Exception {
+	/** Missing Dict */
+	const MISSING_DICT = 0x0100;
+	/** Response code is not 200 */
+	const ERROR_RESPONSE = 0x0101;
+	/** Missing Token */
+	const MISSING_TOKEN = 0x0102;
+}
 
 /**
  * OAuth1.0 class.
@@ -222,7 +233,7 @@ class OAuth10Permission extends OAuthCommon {
 		$get = $args['get'];
 
 		if (!Common::check_idict($get, ['oauth_token']))
-			return [2];
+			return [OAuth10PermissionError::MISSING_DICT];
 		extract($get);
 
 		$auth_header = $this->generate_auth_header(
@@ -248,14 +259,14 @@ class OAuth10Permission extends OAuthCommon {
 			'post' => $post_data
 		]);
 		if ($resp[0] !== 200)
-			return [3];
+			return [OAuth10PermissionError::ERROR_RESPONSE];
 
 		parse_str($resp[1], $args);
 		if (false === $args = Common::check_idict($args, [
 			'oauth_token',
 			'oauth_token_secret',
 		]))
-			return [4];
+			return [OAuth10PermissionError::MISSING_TOKEN];
 
 		# save these two for later actions
 		return [0, [
