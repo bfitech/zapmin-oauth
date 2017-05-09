@@ -6,6 +6,17 @@ namespace BFITech\ZapOAuth;
 
 use BFITech\ZapCore\Common;
 
+/**
+ * Error Class
+ */
+class OAuth20PermissionError extends \Exception {
+	/** Missing Dict */
+	const MISSING_DICT = 0x0100;
+	/** Response code is not 200 */
+	const ERROR_RESPONSE = 0x0101;
+	/** Missing Token */
+	const MISSING_TOKEN = 0x0102;
+}
 
 /**
  * OAuth2.0 class.
@@ -82,7 +93,7 @@ class OAuth20Permission extends OAuthCommon {
 		if (!Common::check_idict($get, ['code', 'state']))
 			# We only check 'state' existence. We don't actually
 			# match it with previously-generated one in auth page.
-			return [2];
+			return [OAuth20PermissionError::MISSING_DICT];
 		extract($get);
 
 		$url = $this->url_access_token;
@@ -125,7 +136,7 @@ class OAuth20Permission extends OAuthCommon {
 			'expect_json' => true
 		]);
 		if ($resp[0] !== 200)
-			return [3];
+			return [OAuth20PermissionError::ERROR_RESPONSE];
 
 		# windows stops here, they don't need access token
 		#if (strstr($url, 'microsoftonline') !== false)
@@ -135,7 +146,7 @@ class OAuth20Permission extends OAuthCommon {
 		# add various additional values, e.g. normalized scope for
 		# Github. We'll only check 'access_token'.
 		if (!Common::check_idict($resp[1], ['access_token']))
-			return [4];
+			return [OAuth20PermissionError::MISSING_TOKEN];
 
 		# Store 'access_token' for later API calls.
 		return [0, $resp[1]];
