@@ -12,43 +12,11 @@ use BFITech\ZapStore\SQL;
 
 /**
  * OAuthRoute class.
+ *
+ * @see ./tests/htdocs-test/index for usage.
+ * @see AdminRoute.
  */
 class OAuthRoute extends OAuthStore {
-
-	/**
-	 * Core instance.
-	 */
-	public $core;
-
-	/**
-	 * Token name.
-	 *
-	 * @fixme Must manually store here since adm_get_token_name()
-	 *     unfortunately belongs to AdminRoute which is not
-	 *     inherited by this class.
-	 */
-	public $token_name;
-
-	/**
-	 * Constructor.
-	 *
-	 *
-	 *
-	 * @param Router $core A router instance.
-	 * @param SQL $store An SQL instance.
-	 * @param bool $force_create_table Always recreate table if true.
-	 * @param Logger $logger Logger instance.
-	 *
-	 * @see ./tests/htdocs-test/index for usage.
-	 * @see AdminRoute.
-	 */
-	public function __construct(
-		Router $core, SQL $store, $force_create_table=null,
-		Logger $logger=null
-	) {
-		$this->core = $core;
-		parent::__construct($store, $force_create_table, $logger);
-	}
 
 	# route handlers
 

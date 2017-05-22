@@ -49,6 +49,9 @@ abstract class OAuthStore extends AdminStore {
 	/** Redirect URL after failed callback. */
 	public $oauth_callback_fail_redirect = null;
 
+	private $force_create_table = false;
+	private $initialized = false;
+
 	/**
 	 * Constructor.
 	 *
@@ -70,31 +73,45 @@ abstract class OAuthStore extends AdminStore {
 	 *    previously-obtained refresh token.
 	 *
 	 * @param SQL $store An SQL connection.
-	 * @param bool $force_create_table When set to true, always
-	 *     recreate table.
 	 * @param Logger $logger Logger instance.
+	 * @param RedisConn $redis RedisConn instance.
 	 *
 	 * @see AdminStore.
 	 */
-	public function __construct(
-		SQL $store, $force_create_table=null, Logger $logger=null
-	) {
-		# Use $this->adm_set_byway_expiration() to finetune expiration.
+	/*
+	public function __construct(AdminRoute $adm, Logger $logger=null) {
+		$this->adm = $adm;
 
-		$this->logger = $logger ? $logger : new Logger();
-		$this->store = $store;
-		$this->dbtype = $store->get_connection_params()['dbtype'];
+		$this->store = $adm->store;
+		$this->logger = $adm->logger;
+	}
+	 */
 
-		# check if udata table exists
-		try {
-			$test = $store->query("SELECT 1 FROM udata LIMIT 1");
-		} catch(SQLError $e) {
-			throw new OAuthError("Zapmin udata table not ready.");
+	public function config($key, $val) {
+		switch ($key) {
+			case 'force_create_table':
+				$this->$key = (bool)$val;
+				break;
 		}
-		# must execute parent constructor to initiate some props
-		parent::__construct($store, null, null, $logger);
+		parent::config($key, $val);
+		return $this;
+	}
 
-		$this->oauth_create_table($force_create_table);
+	public function init() {
+		if ($this->initialized)
+			return $this;
+		$this->initialized = true;
+		parent::init();
+		$this->oauth_create_table();
+		return $this;
+	}
+
+	public function deinit() {
+		if (!$this->initialized)
+			return $this;
+		$this->initialized = false;
+		parent::deinit();
+		return $this;
 	}
 
 	/**
@@ -104,15 +121,15 @@ abstract class OAuthStore extends AdminStore {
 	 * $this->store->status(). This is to retrieve OAuth* tokens
 	 * and use them for request or refresh.
 	 */
-	private function oauth_create_table($force_create_table) {
+	private function oauth_create_table() {
 		$sql = $this->store;
 		$logger = $this->logger;
 
 		$logger->deactivate();
 		try {
-			$test = $sql->query("SELECT 1 FROM uoauth");
+			$sql->query("SELECT 1 FROM uoauth");
 			$logger->activate();
-			if (!$force_create_table)
+			if (!$this->force_create_table)
 				return;
 		} catch (SQLError $e) {}
 		$logger->activate();
@@ -121,33 +138,36 @@ abstract class OAuthStore extends AdminStore {
 			"DROP VIEW IF EXISTS v_uoauth;",
 			"DROP TABLE IF EXISTS uoauth;",
 		] as $drop) {
+			// @codeCoverageIgnoreStart
 			if (!$sql->query_raw($drop)) {
-				// @codeCoverageIgnoreStart
 				$msg = "Cannot drop data:" . $sql->errmsg;
 				$logger->error("OAuth: $msg");
 				throw new OAuthStoreError($msg);
-				// @codeCoverageIgnoreEnd
 			}
+			// @codeCoverageIgnoreEnd
 		}
 
+		$expr = $this->adm_get_expiration();
 		$index = $sql->stmt_fragment('index');
 		$engine = $sql->stmt_fragment('engine');
 		$expire = $sql->stmt_fragment(
 			'datetime', ['delta' => $this->adm_get_expiration()]);
 
+		# token table
+
 		# Each row is associated with a session.sid. Associate the
 		# two tables with $this->store->status() return value.
-		$oauth_table = (
-			"CREATE TABLE uoauth (" .
-			"  aid %s," .
-			"  sid INTEGER REFERENCES usess(sid) ON DELETE CASCADE," .
-			"  oname VARCHAR(64)," .
-			"  otype VARCHAR(12)," .
-			"  access TEXT," .
-			"  access_secret TEXT," .    # OAuth1.0 only
-			"  refresh TEXT" .           # OAuth2.0 only
-			") %s;"
-		);
+		$oauth_table = ("
+			CREATE TABLE uoauth (
+				aid %s,
+				sid INTEGER REFERENCES usess(sid) ON DELETE CASCADE,
+				oname VARCHAR(64),
+				otype VARCHAR(12),
+				access TEXT,
+				access_secret TEXT,    -- OAuth1.0 only
+				refresh TEXT           -- OAuth2.0 only
+			) %s;
+		");
 		$oauth_table = sprintf($oauth_table, $index, $engine);
 		if (!$sql->query_raw($oauth_table)) {
 			// @codeCoverageIgnoreStart
@@ -157,23 +177,25 @@ abstract class OAuthStore extends AdminStore {
 			// @codeCoverageIgnoreEnd
 		}
 
-		$oauth_session_view = (
-			"CREATE VIEW v_uoauth AS" .
-			"  SELECT" .
-			"    uoauth.*," .
-			"    usess.token," .
-			"    usess.expire" .
-			"  FROM uoauth, usess" .
-			"  WHERE" .
-			"    uoauth.sid=usess.sid;"
-		);
+		# session view
+
+		$oauth_session_view = ("
+			CREATE VIEW v_uoauth AS
+				SELECT
+					uoauth.*,
+					usess.token,
+					usess.expire
+				FROM uoauth, usess
+				WHERE
+					uoauth.sid=usess.sid;
+		");
+		// @codeCoverageIgnoreStart
 		if (!$sql->query_raw($oauth_session_view)) {
-			// @codeCoverageIgnoreStart
 			$msg = "Cannot create v_oauth view:" . $sql->errmsg;
 			$logger->error("OAuth: $msg");
 			throw new OAuthStoreError($msg);
-			// @codeCoverageIgnoreEnd
 		}
+		// @codeCoverageIgnoreEnd
 	}
 
 	/**
@@ -184,6 +206,7 @@ abstract class OAuthStore extends AdminStore {
 	 *     current service.
 	 */
 	public function adm_get_oauth_tokens($session_token) {
+		$this->init();
 		$sql = $this->store;
 		$dtnow = $sql->stmt_fragment('datetime', ['delta' => 0]);
 		$stmt = (
@@ -331,7 +354,7 @@ abstract class OAuthStore extends AdminStore {
 	}
 
 	/**
-	 * Default profile fetcher.
+	 * Profile fetcher stub.
 	 *
 	 * Use this to populate user bio after user is successfully
 	 * authenticated.
@@ -385,6 +408,8 @@ abstract class OAuthStore extends AdminStore {
 		$service_type, $service_name, $uname, $access_token,
 		$access_token_secret=null, $refresh_token=null, $profile=[]
 	) {
+		$this->init();
+
 		# build passwordless account using obtained uname with uservice
 		# having the form 'oauth%service_type%[%service_name%]
 
@@ -457,6 +482,7 @@ abstract class OAuthStore extends AdminStore {
 	 *     cookie or request header.
 	 */
 	public function oauth_get_action_from_session($session_token) {
+		$this->init();
 		$tokens = $this->adm_get_oauth_tokens($session_token);
 		if (!$tokens)
 			return null;

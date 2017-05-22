@@ -28,7 +28,6 @@ class OAuth20Store extends OAuthStore {
 	}
 }
 
-class AdminStore20Tab extends AdminStore {}
 
 class OAuth20Test extends TestCase {
 
@@ -41,8 +40,8 @@ class OAuth20Test extends TestCase {
 	public function test_oauth20_store() {
 		$store = new SQLite3(
 			['dbname' => ':memory:'], self::$logger);
-		new AdminStore20Tab($store);
-		$adm = new OAuth20Store($store, true, self::$logger);
+		#new AdminStore20Tab($store);
+		$adm = new OAuth20Store($store, self::$logger);
 
 		$adm->oauth_add_service(
 			'20',
@@ -56,7 +55,7 @@ class OAuth20Test extends TestCase {
 			'http://localhost'
 		);
 
-		# create OAuth1.0 permission instance
+		# create OAuth2.0 permission instance
 		$perm = $adm->oauth_get_permission_instance('20', 'reddit');
 		# patch http client
 		$perm->http_client_custom = function($args) {

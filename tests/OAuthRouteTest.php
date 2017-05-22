@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use BFITech\ZapCore\Logger;
 use BFITech\ZapCoreDev\RouterDev;
 use BFITech\ZapStore\SQLite3;
+use BFITech\ZapStore\SQLError;
 use BFITech\ZapAdmin\AdminRoute;
 use BFITech\ZapAdmin\OAuthRoute;
 use BFITech\ZapAdmin\OAuthError;
@@ -60,19 +61,13 @@ class OAuthRoute20Patched extends OAuthRoute {
 
 class OAuthRouteTest extends TestCase {
 
-
 	private function create_route_10() {
 		$logger = new Logger(Logger::ERROR, '/dev/null');
 		$store = new SQLite3(['dbname' => ':memory:'], $logger);
-		$devcore = new Router(null, null, false);
-		new AdminRoute([
-			'home' => '/',
-			'store_instance' => $store,
-			'core_instance' => $devcore,
-			'logger_instance' => $logger,
-		]);
-		$ocore = new OAuthRoute10Patched($devcore, $store, true, $logger);
-		$ocore->token_name = 'testing';
+		$core = new Router();
+
+		$ocore = new OAuthRoute10Patched($store, $logger, null, $core);
+		$ocore->adm_set_token_name('testing');
 		$ocore->oauth_add_service(
 			'10',
 			'twitter',
@@ -89,14 +84,11 @@ class OAuthRouteTest extends TestCase {
 	private function create_route_20() {
 		$logger = new Logger(Logger::ERROR, '/dev/null');
 		$store = new SQLite3(['dbname' => ':memory:'], $logger);
-		$devcore = new Router('/', null, false);
-		new AdminRoute([
-			'store_instance' => $store,
-			'core_instance' => $devcore,
-			'logger_instance' => $logger,
-		]);
-		$ocore = new OAuthRoute20Patched($devcore, $store, null, $logger);
-		$ocore->token_name = 'testing';
+		$core = (new Router())->config('home', '/')
+			->config('shutdown', false);
+
+		$ocore = new OAuthRoute20Patched($store, $logger, null, $core);
+		$ocore->adm_set_token_name('testing');
 		$ocore->oauth_add_service(
 			'20',
 			'reddit',
@@ -113,20 +105,34 @@ class OAuthRouteTest extends TestCase {
 	public function test_constructor() {
 		$logger = new Logger(Logger::ERROR, '/dev/null');
 		$store = new SQLite3(['dbname' => ':memory:'], $logger);
-		$devcore = new Router('/', null, false);
+		$core = new Router('/', null, false);
+
+		$no_table = false;
 		try {
-			$ocore = new OAuthRoute10Patched($devcore, $store, true, $logger);
-		} catch(OAuthError $e) {
-			# udata table not available
+			$store->query("SELECT 1 FROM uoauth");
+		} catch(SQLError $e) {
+			$no_table = true;
 		}
-		new AdminRoute([
-			'store_instance' => $store,
-			'core_instance' => $devcore,
-			'logger_instance' => $logger,
-		]);
-		new OAuthRoute10Patched($devcore, $store, null, $logger);
-		# recreate table
-		new OAuthRoute10Patched($devcore, $store, true, $logger);
+		$this->assertTrue($no_table);
+
+		$ocore = (new OAuthRoute10Patched($store, $logger,
+			null, $core))->init();
+		$store->query("SELECT 1 FROM uoauth");
+		$store->update('udata', ['uname' => 'toor'],
+			['uname' => 'root']);
+
+		$this->assertFalse(
+			$store->query("SELECT uid FROM udata WHERE uname=?",
+			['root']));
+
+		# recreate tables, including those installed by AdminStore
+		$ocore->deinit()
+			->config('force_create_table', true)
+			->init();
+
+		$this->assertNotFalse(
+			$store->query("SELECT uid FROM udata WHERE uname=?",
+			['root']));
 	}
 
 	public function test_route_10() {

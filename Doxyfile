@@ -5,7 +5,7 @@
 #---------------------------------------------------------------------------
 DOXYFILE_ENCODING      = UTF-8
 PROJECT_NAME           = "ZapOAuth"
-PROJECT_NUMBER         = "1.3"
+PROJECT_NUMBER         = "1.4"
 PROJECT_BRIEF          = "OAuth extension for zapmin."
 PROJECT_LOGO           =
 OUTPUT_DIRECTORY       = ./docs
@@ -91,7 +91,7 @@ CITE_BIB_FILES         =
 # Configuration options related to warning and progress messages
 #---------------------------------------------------------------------------
 QUIET                  = NO
-WARNINGS               = YES
+WARNINGS               = NO
 WARN_IF_UNDOCUMENTED   = YES
 WARN_IF_DOC_ERROR      = YES
 WARN_NO_PARAMDOC       = NO

@@ -28,7 +28,6 @@ class OAuth10Store extends OAuthStore {
 	}
 }
 
-class AdminStore10Tab extends AdminStore {}
 
 class OAuth10Test extends TestCase {
 
@@ -41,8 +40,7 @@ class OAuth10Test extends TestCase {
 	public function test_oauth10_store() {
 		$store = new SQLite3(
 			['dbname' => ':memory:'], self::$logger);
-		new AdminStore10Tab($store);
-		$adm = new OAuth10Store($store, true, self::$logger);
+		$adm = new OAuth10Store($store, self::$logger);
 
 		try {
 			$adm->oauth_add_service(
