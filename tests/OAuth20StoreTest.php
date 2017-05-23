@@ -10,21 +10,24 @@ use BFITech\ZapCore\Logger;
 use BFITech\ZapStore\SQLite3;
 use BFITech\ZapAdmin\AdminStore;
 use BFITech\ZapAdmin\OAuthStore;
-use BFITech\ZapAdmin\OAuthError;
+use BFITech\ZapOAuth\OAuthError;
 
 
 class OAuth20Store extends OAuthStore {
 	public function oauth_fetch_profile(
 		$oauth_action, $service_type, $service_name, $kwargs=[]
 	) {
-		if ($service_name != 'reddit')
-			return [];
-		return [
-			'uname' => 'john',
-			'fname' => 'John Smith',
-			'email' => 'john@example.org',
-			'site' => 'http://example.org',
-		];
+		return ServiceFixture::oauth_fetch_profile(
+			$oauth_action, $service_type, $service_name, $kwargs);
+	}
+	public function oauth_add_user(
+		$service_type, $service_name, $uname, $access_token,
+		$access_token_secret=null, $refresh_token=null, $profile=[]
+	) {
+		return parent::oauth_add_user(
+			$service_type, $service_name, $uname, $access_token,
+			$access_token_secret, $refresh_token, $profile
+		);
 	}
 }
 
@@ -37,25 +40,44 @@ class OAuth20Test extends TestCase {
 		self::$logger = new Logger(Logger::ERROR, '/dev/null');
 	}
 
-	public function test_oauth20_store() {
+	private function register_services() {
 		$store = new SQLite3(
 			['dbname' => ':memory:'], self::$logger);
-		#new AdminStore20Tab($store);
-		$adm = new OAuth20Store($store, self::$logger);
+		$adm = new OAuth10Store($store, self::$logger);
 
-		$adm->oauth_add_service(
-			'20',
-			'reddit',
-			'consumer-key-test',
-			'consumer-secret-test',
-			null,
-			'http://reddit.example.org/20/auth',
-			'http://reddit.example.org/20/access',
-			'email',
-			'http://localhost'
+		$make_service = function($srv) use($adm) {
+			call_user_func_array([$adm, 'oauth_add_service'],[
+				'20', $srv,
+				'consumer-key-test',
+				'consumer-secret-test',
+				"http://${srv}.example.org/20/auth_request",
+				"http://${srv}.example.org/20/auth",
+				"http://${srv}.example.org/20/access",
+				'email', 'http://localhost'
+			]);
+		};
+		# register these bogus services
+		foreach (['github', 'google', 'reddit'] as $srv)
+			$make_service($srv);
+
+		return $adm;
+	}
+
+	public function test_oauth20_store() {
+		$adm = $this->register_services();
+
+		# cannot add the same type and name, though other parameters
+		# are different
+		$this->assertFalse(
+			$adm->oauth_add_service(
+				'20', 'reddit',
+				'xconsumer-key-test',
+				'xconsumer-secret-test',
+				null, null, null, null, null
+			)
 		);
 
-		# create OAuth2.0 permission instance
+		# create OAuth2.0 permission instance, success
 		$perm = $adm->oauth_get_permission_instance('20', 'reddit');
 		# patch http client
 		$perm->http_client_custom = function($args) {
@@ -91,14 +113,20 @@ class OAuth20Test extends TestCase {
 		parse_str($purl['query'], $res);
 
 		# -> LOCAL -> REMOTE
-		# get access token from params provided by site callback
-		$rv = $perm->site_callback(['get' => $res]);
+		# get access token from query string provided by site callback
+		$rv = $perm->site_callback($res);
 		$this->assertEquals($rv[0], 0);
 		$this->assertNotFalse(Common::check_idict($rv[1],
 			['access_token', 'refresh_token']));
 		extract($rv[1]);
 
-		# create OAuth1.0 action instance
+		# create OAuth2.0 action instance, invalid type
+		$act = $adm->oauth_get_action_instance('30', 'reddit',
+			$access_token, $refresh_token,
+			'http://reddit.example.org/20/access');
+		$this->assertNull($act);
+
+		# create OAuth2.0 action instance
 		$act = $adm->oauth_get_action_instance('20', 'reddit',
 			$access_token, $refresh_token,
 			'http://reddit.example.org/20/access');
@@ -127,12 +155,10 @@ class OAuth20Test extends TestCase {
 		$profile = $adm->oauth_fetch_profile(
 			$act, '20', 'reddit');
 
-		# save to database
-		$rv = $adm->oauth_add_user(
+		# save to database and obtain session token
+		$session_token = $adm->oauth_add_user(
 			'20', 'reddit', $data['uname'],
 			$access_token, null, $refresh_token, $profile);
-		$this->assertEquals($rv[0], 0);
-		$session_token = $rv[1];
 
 		# check if we're truly signed in
 		$adm->adm_set_user_token($session_token);
@@ -151,12 +177,18 @@ class OAuth20Test extends TestCase {
 		$this->assertEquals($rv['access'], $access_token);
 		$this->assertEquals($rv['refresh'], $refresh_token);
 
-		# test action instance
+		# get action instance with wrong token
+		$act = $adm->oauth_get_action_from_session('wrong_token');
+		$this->assertNull($act);
+
+		# get action instance
 		$act = $adm->oauth_get_action_from_session($session_token);
 		# patch http client
 		$act->http_client_custom = function($args) {
 			return ServiceFixture::oauth20($args);
 		};
+
+		# use action instance
 		$rv = $act->request([
 			'method' => 'GET',
 			'url' => 'http://reddit.example.org/20/api/me'

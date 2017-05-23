@@ -11,7 +11,7 @@ use BFITech\ZapStore\SQLite3;
 use BFITech\ZapStore\SQLError;
 use BFITech\ZapAdmin\AdminRoute;
 use BFITech\ZapAdmin\OAuthRoute;
-use BFITech\ZapAdmin\OAuthError;
+use BFITech\ZapOAuth\OAuthError;
 
 
 class Router extends RouterDev {
@@ -23,89 +23,93 @@ class Router extends RouterDev {
 	}
 }
 
-class OAuthRoute10Patched extends OAuthRoute {
-	public function http_client($kwargs) {
-		return ServiceFixture::oauth10($kwargs);
-	}
+class OAuthRoutePatched extends OAuthRoute {
 	public function oauth_fetch_profile(
 		$oauth_action, $service_type, $service_name, $kwargs=[]
 	) {
-		if ($service_name != 'twitter')
-			return [];
-		return [
-			'uname' => 'john',
-			'fname' => 'John Smith',
-			'email' => 'john@example.org',
-			'site' => 'http://example.org',
-		];
+		return ServiceFixture::oauth_fetch_profile(
+			$oauth_action, $service_type, $service_name, $kwargs);
+	}
+	public function oauth_finetune_permission($args, $perm) {
+		if ($args['params']['service_name'] == 'reddit') {
+			$perm->auth_basic_for_site_callback = true;
+			$perm->access_token_url_extra_params = [
+				'response' => 'noop',
+			];
+		}
+		return $perm;
 	}
 }
 
-class OAuthRoute20Patched extends OAuthRoute {
+class OAuthRoute10Patched extends OAuthRoutePatched {
+	public function http_client($kwargs) {
+		return ServiceFixture::oauth10($kwargs);
+	}
+}
+
+class OAuthRoute20Patched extends OAuthRoutePatched {
 	public function http_client($kwargs) {
 		return ServiceFixture::oauth20($kwargs);
-	}
-	public function oauth_fetch_profile(
-		$oauth_action, $service_type, $service_name, $kwargs=[]
-	) {
-		if ($service_name != 'reddit')
-			return [];
-		return [
-			'uname' => 'john',
-			'fname' => 'John Smith',
-			'email' => 'john@example.org',
-			'site' => 'http://example.org',
-		];
 	}
 }
 
 class OAuthRouteTest extends TestCase {
 
-	private function create_route_10() {
-		$logger = new Logger(Logger::ERROR, '/dev/null');
-		$store = new SQLite3(['dbname' => ':memory:'], $logger);
-		$core = new Router();
+	public static $store;
+	public static $logger;
+	public static $core;
 
-		$ocore = new OAuthRoute10Patched($store, $logger, null, $core);
-		$ocore->adm_set_token_name('testing');
-		$ocore->oauth_add_service(
-			'10',
-			'twitter',
+	public static function setUpBeforeClass() {
+		self::$logger = new Logger(Logger::ERROR, '/dev/null');
+		self::$store = new SQLite3(['dbname' => ':memory:'],
+			self::$logger);
+		self::$core = (new Router())->config('home', '/');
+	}
+
+	private function create_route_10() {
+
+		$adm = new OAuthRoute10Patched(self::$store, self::$logger,
+			null, self::$core);
+		$adm->adm_set_token_name('testing');
+		$adm->oauth_add_service(
+			'10', 'tumblr',
 			'test-consumer-key', 'test-consumer-secret',
-			'http://example.org/10/auth_request',
-			'http://example.org/10/auth',
-			'http://example.org/10/access',
-			null,
-			'http://localhost'
+			'http://tumblr.example.org/10/auth_request',
+			'http://tumblr.example.org/10/auth',
+			'http://tumblr.example.org/10/access',
+			null, 'http://localhost'
 		);
-		return $ocore;
+		$adm->oauth_add_service(
+			'10', 'twitter',
+			'test-consumer-key', 'test-consumer-secret',
+			'http://twitter.example.org/10/auth_request',
+			'http://twitter.example.org/10/auth',
+			'http://twitter.example.org/10/access',
+			null, 'http://localhost'
+		);
+		return $adm;
 	}
 
 	private function create_route_20() {
-		$logger = new Logger(Logger::ERROR, '/dev/null');
-		$store = new SQLite3(['dbname' => ':memory:'], $logger);
-		$core = (new Router())->config('home', '/')
-			->config('shutdown', false);
-
-		$ocore = new OAuthRoute20Patched($store, $logger, null, $core);
-		$ocore->adm_set_token_name('testing');
-		$ocore->oauth_add_service(
-			'20',
-			'reddit',
+		$adm = new OAuthRoute20Patched(self::$store, self::$logger,
+			null, self::$core);
+		$adm->adm_set_token_name('testing');
+		$adm->oauth_add_service(
+			'20', 'reddit',
 			'test-consumer-key', 'test-consumer-secret',
 			null,
-			'http://example.org/20/auth',
-			'http://example.org/20/access',
-			'email',
-			'http://localhost'
+			'http://reddit.example.org/20/auth',
+			'http://reddit.example.org/20/access',
+			'email', 'http://localhost'
 		);
-		return $ocore;
+		return $adm;
 	}
 
 	public function test_constructor() {
 		$logger = new Logger(Logger::ERROR, '/dev/null');
 		$store = new SQLite3(['dbname' => ':memory:'], $logger);
-		$core = new Router('/', null, false);
+		$core = (new Router())
+			->config('logger', $logger);
 
 		$no_table = false;
 		try {
@@ -115,18 +119,22 @@ class OAuthRouteTest extends TestCase {
 		}
 		$this->assertTrue($no_table);
 
-		$ocore = (new OAuthRoute10Patched($store, $logger,
-			null, $core))->init();
+		$adm = new OAuthRoute10Patched($store, $logger,
+			null, $core);
+		# deinit won't take effect on uninited instance
+		$adm->deinit();
+		# let's init
+		$adm->init();
+
+		# table just got installed with one default user
 		$store->query("SELECT 1 FROM uoauth");
+
+		# let's ruin default user from the db
 		$store->update('udata', ['uname' => 'toor'],
 			['uname' => 'root']);
 
-		$this->assertFalse(
-			$store->query("SELECT uid FROM udata WHERE uname=?",
-			['root']));
-
 		# recreate tables, including those installed by AdminStore
-		$ocore->deinit()
+		$adm->deinit()
 			->config('force_create_table', true)
 			->init();
 
@@ -135,96 +143,132 @@ class OAuthRouteTest extends TestCase {
 			['root']));
 	}
 
+	private function get_redir_url($heads) {
+		$location_header = array_filter($heads, function($ele){
+				return strpos($ele, 'Location:') === 0;
+			}
+		);
+		if (!$location_header)
+			return null;
+		return explode(' ', $location_header[0])[1];
+	}
+
 	public function test_route_10() {
 
-		$_SERVER['REQUEST_URI'] = '/';
+		$adm = $this->create_route_10();
+		$adm->oauth_callback_fail_redirect = 'http://localhost/fail';
+		$adm->oauth_callback_ok_redirect = null;
+		$core = $adm->core;
 
 		# invalid params
-		$ocore = $this->create_route_10();
-		$ocore->route('/', [$ocore, 'route_byway_auth']);
-		$core = $ocore->core;
+		$_SERVER['REQUEST_URI'] = '/';
+		$adm->route('/', [$adm, 'route_byway_auth']);
 		$this->assertEquals($core::$code, 404);
-		$core->reset();
+		$this->assertEquals($core::$body['errno'],
+			OAuthError::INCOMPLETE_DATA);
+		$core->deinit()->reset();
 
 		# wrong route callback application
 		$_SERVER['REQUEST_URI'] = '/oauth/wrong/url';
-		$ocore = $this->create_route_10();
-		$ocore->route('/oauth/wrong/url',
-			[$ocore, 'route_byway_auth']);
-		$core = $ocore->core;
+		$adm->route('/oauth/wrong/url',
+			[$adm, 'route_byway_auth']);
 		$this->assertEquals($core::$code, 404);
+		$this->assertEquals($core::$body['errno'],
+			OAuthError::INCOMPLETE_DATA);
+		$core->deinit()->reset();
 
 		# unregistered service
-		$_SERVER['REQUEST_URI'] = '/oauth/10/tumblr/auth';
-		$ocore = $this->create_route_10();
-		$ocore->route('/oauth/<service_type>/<service_name>/auth',
-			[$ocore, 'route_byway_auth']);
-		$core = $ocore->core;
+		$_SERVER['REQUEST_URI'] = '/oauth/10/vk/auth';
+		$adm->route('/oauth/<service_type>/<service_name>/auth',
+			[$adm, 'route_byway_auth']);
 		$this->assertEquals($core::$code, 404);
+		$this->assertEquals($core::$body['errno'],
+			OAuthError::SERVICE_UNKNOWN);
+		$core->deinit()->reset();
 
+		# server/network error, see fixture
+		$_SERVER['REQUEST_URI'] = '/oauth/10/tumblr/auth';
+		$adm->route('/oauth/<service_type>/<service_name>/auth',
+			[$adm, 'route_byway_auth']);
+		$this->assertEquals($core::$code, 503);
+		$this->assertEquals($core::$body['errno'],
+			OAuthError::ACCESS_URL_MISSING);
+		$core->deinit()->reset();
+
+		# access token success
 		$_SERVER['REQUEST_URI'] = '/oauth/10/twitter/auth';
-		$ocore = $this->create_route_10();
-		$ocore->route('/oauth/<service_type>/<service_name>/auth',
-			[$ocore, 'route_byway_auth']);
-		$core = $ocore->core;
+		$adm->route('/oauth/<service_type>/<service_name>/auth',
+			[$adm, 'route_byway_auth']);
 		$this->assertEquals($core::$code, 200);
 		$auth_url = $core::$body['data'];
 		$this->assertEquals(0,
 			strpos($auth_url, 'http://example.org/10/auth'));
+		$core->deinit()->reset();
 
-		$access = $ocore->http_client([
+		# open access token URL
+		$access = $adm->http_client([
 			'method' => 'GET',
 			'url' => $auth_url,
 		]);
 		$this->assertEquals($access[0], 200);
 		$redir = $access[1];
 		$this->assertEquals(0, strpos($redir, 'http://localhost'));
-		$core->reset();
+		# collect access tokens from URL
+		parse_str(parse_url($redir)['query'], $received_qs);
 
-		$purl = parse_url($redir);
-		parse_str($purl['query'], $get);
-
-		# failed authentication
+		# failed authentication due to wrong query string
 		$_SERVER['REQUEST_URI'] = '/oauth/10/twitter/callback';
 		$_GET = ['wrong' => 'data'];
-		$ocore = $this->create_route_10();
-		$ocore->oauth_callback_fail_redirect = 'http://localhost/fail';
-		$ocore->route('/oauth/<service_type>/<service_name>/callback',
-			[$ocore, 'route_byway_callback']);
-		$core = $ocore->core;
+		$adm->route('/oauth/<service_type>/<service_name>/callback',
+			[$adm, 'route_byway_callback']);
+		# redirect to fail callback
 		$this->assertEquals($core::$code, 301);
+		$this->assertEquals(
+			$this->get_redir_url($core::$head),
+			$adm->oauth_callback_fail_redirect);
+		$core->deinit()->reset();
 
-		$_GET = $get;
-		$_SERVER['REQUEST_URI'] = '/oauth/10/twitter/callback';
-		$ocore = $this->create_route_10();
-		$ocore->oauth_callback_ok_redirect = 'http://localhost/ok';
-		$ocore->route('/oauth/<service_type>/<service_name>/callback',
-			[$ocore, 'route_byway_callback']);
-		$core = $ocore->core;
+		# failed authentication due to wrong service
+		$_SERVER['REQUEST_URI'] = '/oauth/10/tumblr/callback';
+		$_GET = $received_qs;
+		$adm->route('/oauth/<service_type>/<service_name>/callback',
+			[$adm, 'route_byway_callback']);
+		# redirect to fail callback
 		$this->assertEquals($core::$code, 301);
-		$redir_local = explode(' ',
-			array_filter($core::$head, function($ele){
-				return strpos($ele, 'Location:') === 0;
-			}
-		)[0])[1];
-		$this->assertEquals($redir_local,
-			$ocore->oauth_callback_ok_redirect);
+		$this->assertEquals(
+			$this->get_redir_url($core::$head),
+			$adm->oauth_callback_fail_redirect);
+		$core->deinit()->reset();
+
+		# successful authentication
+		$_SERVER['REQUEST_URI'] = '/oauth/10/twitter/callback';
+		$_GET = $received_qs;
+		$adm->route('/oauth/<service_type>/<service_name>/callback',
+			[$adm, 'route_byway_callback']);
+		# redirect to ok callback
+		$this->assertEquals($core::$code, 301);
+		$this->assertEquals(
+			$this->get_redir_url($core::$head),
+			$adm->core->get_home());
+		$core->deinit()->reset();
 
 		# token is sent via cookie only, which is not available in
 		# the test; let's pull it from database
-		$session_token = $ocore->store->query(
+		$session_token = $adm->store->query(
 			"SELECT token FROM usess " .
 			"ORDER BY sid DESC LIMIT 1")['token'];
 
 		# use session token for signing in
-		$ocore->adm_set_user_token($session_token);
-		$rv = $ocore->adm_status();
+		$adm->adm_set_user_token($session_token);
+		$rv = $adm->adm_status();
 		$this->assertEquals($rv['token'], $session_token);
 
-		$act = $ocore->oauth_get_action_from_session($session_token);
+		# token can be used to instantiate oauth action
+		$act = $adm->oauth_get_action_from_session($session_token);
+		# action instance can be used to make requests
 		$rv = $act->request([
 			'method' => 'GET',
-			'url' => 'http://example.org/10/api/me',
+			'url' => 'http://twitter.example.org/10/api/me',
 		]);
 		$this->assertEquals($rv[0], 200);
 		extract(json_decode($rv[1], true));
@@ -233,93 +277,99 @@ class OAuthRouteTest extends TestCase {
 
 	public function test_route_20() {
 
-		$_SERVER['REQUEST_URI'] = '/';
+		$adm = $this->create_route_20();
+		#$adm->oauth_callback_fail_redirect = 'http://localhost/fail';
+		$adm->oauth_callback_ok_redirect = 'http://localhost/ok';
+		$core = $adm->core;
 
 		# invalid params
-		$ocore = $this->create_route_20();
-		$ocore->route('/', [$ocore, 'route_byway_auth']);
-		$core = $ocore->core;
+		$_SERVER['REQUEST_URI'] = '/';
+		$adm->route('/', [$adm, 'route_byway_auth']);
 		$this->assertEquals($core::$code, 404);
-		$core->reset();
+		$core->deinit()->reset();
 
 		# unregistered service
-		$_SERVER['REQUEST_URI'] = '/oauth/20/linkedin/auth';
-		$ocore = $this->create_route_20();
-		$ocore->route('/oauth/<service_type>/<service_name>/auth',
-			[$ocore, 'route_byway_auth']);
-		$core = $ocore->core;
+		$_SERVER['REQUEST_URI'] = '/oauth/20/instagram/auth';
+		$adm->route('/oauth/<service_type>/<service_name>/auth',
+			[$adm, 'route_byway_auth']);
 		$this->assertEquals($core::$code, 404);
+		$this->assertEquals($core::$body['errno'],
+			OAuthError::SERVICE_UNKNOWN);
+		$core->deinit()->reset();
 
+		# success
 		$_SERVER['REQUEST_URI'] = '/oauth/20/reddit/auth';
-		$ocore = $this->create_route_20();
-		$ocore->route('/oauth/<service_type>/<service_name>/auth',
-			[$ocore, 'route_byway_auth']);
-		$core = $ocore->core;
+		$adm->route('/oauth/<service_type>/<service_name>/auth',
+			[$adm, 'route_byway_auth']);
 		$this->assertEquals($core::$code, 200);
 		$auth_url = $core::$body['data'];
-		$this->assertEquals(0,
-			strpos($auth_url, 'http://example.org/20/auth'));
+		$this->assertSame(0,
+			strpos($auth_url, 'http://reddit.example.org/20/auth'));
+		$core->deinit()->reset();
 
-		$access = $ocore->http_client([
+		$access = $adm->http_client([
 			'method' => 'GET',
 			'url' => $auth_url,
 		]);
 		$this->assertEquals($access[0], 200);
 		$redir = $access[1];
-		$this->assertEquals(0, strpos($redir, 'http://localhost'));
-		$core->reset();
+		$this->assertSame(0, strpos($redir, 'http://localhost'));
 
-		$purl = parse_url($redir);
-		parse_str($purl['query'], $get);
+		parse_str(parse_url($redir)['query'], $received_qs);
 
 		# wrong route callback application
 		$_SERVER['REQUEST_URI'] = '/oauth/wrong/url';
-		$ocore = $this->create_route_20();
-		$ocore->route('/oauth/wrong/url',
-			[$ocore, 'route_byway_callback']);
-		$core = $ocore->core;
+		$adm->route('/oauth/wrong/url',
+			[$adm, 'route_byway_callback']);
 		$this->assertEquals($core::$code, 404);
+		$core->deinit()->reset();
 
-		# failed authentication
+		# visiting invalid site callback
+		$_SERVER['REQUEST_URI'] = '/oauth/20/google/callback';
+		$adm->route('/oauth/<service_type>/<service_name>/callback',
+			[$adm, 'route_byway_callback']);
+		$this->assertEquals($core::$code, 404);
+		$core->deinit()->reset();
+
+		# failed authentication without redirect, shows abort(503)
 		$_SERVER['REQUEST_URI'] = '/oauth/20/reddit/callback';
 		$_GET = ['wrong' => 'data'];
-		$ocore = $this->create_route_20();
-		$ocore->route('/oauth/<service_type>/<service_name>/callback',
-			[$ocore, 'route_byway_callback']);
-		$core = $ocore->core;
+		$adm->route('/oauth/<service_type>/<service_name>/callback',
+			[$adm, 'route_byway_callback']);
 		$this->assertEquals($core::$code, 503);
+		$core->deinit()->reset();
 
-		$_GET = $get;
+		$_GET = $received_qs;
 		$_SERVER['REQUEST_URI'] = '/oauth/20/reddit/callback';
-		$ocore = $this->create_route_20();
-		$ocore->route('/oauth/<service_type>/<service_name>/callback',
-			[$ocore, 'route_byway_callback']);
-		$core = $ocore->core;
+		$adm->route('/oauth/<service_type>/<service_name>/callback',
+			[$adm, 'route_byway_callback']);
 		$this->assertEquals($core::$code, 301);
 		$redir_local = explode(' ', array_filter($core::$head, function($ele){
 			return strpos($ele, 'Location:') === 0;
 		})[0])[1];
-		$this->assertEquals($redir_local, '/');
+		$this->assertEquals($redir_local,
+			$adm->oauth_callback_ok_redirect);
+		$core->deinit()->reset();
 
 		# token is sent via cookie only, which is not available in
 		# the test; let's pull it from database
-		$session_token = $ocore->store->query(
+		$session_token = $adm->store->query(
 			"SELECT token FROM usess " .
 			"ORDER BY sid DESC LIMIT 1")['token'];
 
 		# use session token for signing in
-		$ocore->adm_set_user_token($session_token);
-		$rv = $ocore->adm_status();
+		$adm->adm_set_user_token($session_token);
+		$rv = $adm->adm_status();
 		$this->assertEquals($rv['token'], $session_token);
 
-		$act = $ocore->oauth_get_action_from_session($session_token);
+		$act = $adm->oauth_get_action_from_session($session_token);
 		$rv = $act->request([
 			'method' => 'GET',
-			'url' => 'http://example.org/20/api/me',
+			'url' => 'http://reddit.example.org/20/api/me',
 		]);
 		$this->assertEquals($rv[0], 200);
 		extract(json_decode($rv[1], true));
 		$this->assertEquals($fname, "John Smith");
-	}
 
+	}
 }

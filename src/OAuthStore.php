@@ -12,27 +12,30 @@ use BFITech\ZapOAuth as zo;
 
 
 /**
- * OAuthError class.
- */
-class OAuthError extends \Exception {
-
-	/**
-	 * Saving user data failed, most likely server error.
-	 */
-	const SAVING_DATA_FAILED = 0x01;
-
-	/** Failed to get token. */
-	const MISSING_TOKEN = 0x02;
-
-}
-
-
-/**
  * OAuthStore class.
  *
- * This only deals with storage. Router activity is not allowed.
+ * This only deals with storage. Routing activities are in OAuthRoute.
+ *
+ * General workflow:
+ *
+ * 1. Extend this class, e.g. OAuthRouteCustom, with method
+ *    oauth_fetch_profile() overridden.
+ * 2. Instantiate OAuthRouteCustom $so, let's call this
+ *    super-oauth.
+ * 3. Register services with $so->oauth_add_service() with
+ *    appropriate configuration.
+ * 4. Use $perm = $so->oauth_get_permission_instance() that will
+ *    initiate sequence of acquiring access token, along with
+ *    access token secret for OAuth1 and refresh token for OAuth2.
+ * 5. When access token is obtained, use it to make API calls
+ *    with $act = $so->oauth_get_action_instance(). $act->request()
+ *    wraps regular API calls. Especially for OAuth2, there is
+ *    $act->refresh() that requests access token given a
+ *    previously-obtained refresh token.
+ *
+ * @see AdminStore.
  */
-abstract class OAuthStore extends AdminStore {
+abstract class OAuthStore extends AdminRoute {
 
 	/**
 	 * Service register.
@@ -55,38 +58,20 @@ abstract class OAuthStore extends AdminStore {
 	/**
 	 * Constructor.
 	 *
-	 * General workflow:
-	 *
-	 * 1. Extend this class, e.g. OAuthRouteCustom, with method
-	 *    oauth_fetch_profile() overridden.
-	 * 2. Instantiate OAuthRouteCustom $so, let's call this
-	 *    super-oauth.
-	 * 3. Register services with $so->oauth_add_service() with
-	 *    appropriate configuration.
-	 * 4. Use $perm = $so->oauth_get_permission_instance() that will
-	 *    initiate sequence of acquiring access token, along with
-	 *    access token secret for OAuth1 and refresh token for OAuth2.
-	 * 5. When access token is obtained, use it to make API calls
-	 *    with $act = $so->oauth_get_action_instance(). $act->request()
-	 *    wraps regular API calls. Especially for OAuth2, there is
-	 *    $act->refresh() that requests access token given a
-	 *    previously-obtained refresh token.
 	 *
 	 * @param SQL $store An SQL connection.
 	 * @param Logger $logger Logger instance.
 	 * @param RedisConn $redis RedisConn instance.
 	 *
-	 * @see AdminStore.
-	 */
-	/*
-	public function __construct(AdminRoute $adm, Logger $logger=null) {
-		$this->adm = $adm;
-
-		$this->store = $adm->store;
-		$this->logger = $adm->logger;
-	}
 	 */
 
+	/**
+	 * Configure.
+	 *
+	 * @param string $key Config key. Available key:
+	 *     `force_create_table`.
+	 * @param mixed $vel Config value.
+	 */
 	public function config($key, $val) {
 		switch ($key) {
 			case 'force_create_table':
@@ -97,6 +82,11 @@ abstract class OAuthStore extends AdminStore {
 		return $this;
 	}
 
+	/**
+	 * Initialize object.
+	 *
+	 * This primarily sets up tables.
+	 */
 	public function init() {
 		if ($this->initialized)
 			return $this;
@@ -106,6 +96,11 @@ abstract class OAuthStore extends AdminStore {
 		return $this;
 	}
 
+	/**
+	 * Deinitialize object.
+	 *
+	 * Mostly useful in tests.
+	 */
 	public function deinit() {
 		if (!$this->initialized)
 			return $this;
@@ -118,7 +113,7 @@ abstract class OAuthStore extends AdminStore {
 	 * Create OAuth session table.
 	 *
 	 * This table is not for authentication since it's done by
-	 * $this->store->status(). This is to retrieve OAuth* tokens
+	 * OAuthStore::store::status. This is to retrieve OAuth* tokens
 	 * and use them for request or refresh.
 	 */
 	private function oauth_create_table() {
@@ -247,7 +242,7 @@ abstract class OAuthStore extends AdminStore {
 		$scope, $url_callback
 	) {
 		if (!in_array($service_type, ['10', '20']))
-			throw new OAuthError(
+			throw new zo\OAuthError(
 				"Invalid service type: '$service_type'.");
 
 		$key = $service_name . '-' . $service_type;
@@ -272,8 +267,8 @@ abstract class OAuthStore extends AdminStore {
 	/**
 	 * Instantiate OAuth*Permission class.
 	 *
-	 * @param string $service_type Service type as stored in config.
-	 * @param string $service_name Service name as stored in config.
+	 * @param string $service_type Service type.
+	 * @param string $service_name Service name.
 	 */
 	public function oauth_get_permission_instance(
 		$service_type, $service_name
@@ -306,6 +301,32 @@ abstract class OAuthStore extends AdminStore {
 	}
 
 	/**
+	 * Finetune permission instance.
+	 *
+	 * Override this in a subclass to change, e.g.
+	 * auth_basic_for_site_callback in OAuth2.0.
+	 *
+	 * @param dict $args Router HTTP variables.
+	 * @param object $oauth_perm OAuth*Permission instance.
+	 * @codeCoverageIgnore
+	 *
+	 * ### Example:
+	 *
+	 * @code
+	 * class MyOAuthRoute extends OAuthRoute {
+	 *     public function oauth_permission_finetune($perm, $args) {
+	 *         if ($args['params'] == 'reddit')
+	 *             $perm->auth_basic_for_site_callback = true;
+	 *         return $perm;
+	 *     }
+	 * }
+	 * @endcode
+	 */
+	public function oauth_finetune_permission($args, $oauth_perm) {
+		return $oauth_perm;
+	}
+
+	/**
 	 * Instantiate OAuth*Action class.
 	 *
 	 * When succeeds, each instance has request() method that we
@@ -313,10 +334,10 @@ abstract class OAuthStore extends AdminStore {
 	 * also refresh() method to refresh token when its access token
 	 * is expired.
 	 *
-	 * @param string $service_type Service type as stored in config.
-	 * @param string $service_name Service name as stored in config.
-	 * @param string $access_token Access token returned by site_callback()
-	 *     or retrieved from storage.
+	 * @param string $service_type Service type.
+	 * @param string $service_name Service name.
+	 * @param string $access_token Access token returned by
+	 *     site_callback() or retrieved from storage.
 	 * @param string $access_token_secret Access token secret returned
 	 *     by site_callback() or retrived. OAuth1.0 only.
 	 * @param string $refresh_token Refresh token returned by
@@ -385,6 +406,9 @@ abstract class OAuthStore extends AdminStore {
 	/**
 	 * Add new user after successful authorization.
 	 *
+	 * Only call from OAuthRoute::route_byway_callback and not from
+	 * anywhere else. For testing, use accessor in subclasses.
+	 *
 	 * @param string $service_type '10' for OAuth1, '20' for OAuth2.
 	 * @param string $service_name Service nickname, e.g. 'github'.
 	 * @param string $uname Username obtained by
@@ -396,15 +420,9 @@ abstract class OAuthStore extends AdminStore {
 	 * @param dict $profile Additional profile data obtained by
 	 *     successful $this->oauth_fetch_profile().
 	 *
-	 * @return When succeeds, an array of the form:
-	 *     @code
-	 *     (array)[
-	 *         (int)errno,
-	 *         (string)session_token,
-	 *     ]
-	 *     @endcode
+	 * @return string Session token.
 	 */
-	public function oauth_add_user(
+	protected function oauth_add_user(
 		$service_type, $service_name, $uname, $access_token,
 		$access_token_secret=null, $refresh_token=null, $profile=[]
 	) {
@@ -414,7 +432,8 @@ abstract class OAuthStore extends AdminStore {
 		# having the form 'oauth%service_type%[%service_name%]
 
 		$uname = rawurlencode($uname);
-		$uservice = sprintf('oauth%s[%s]', $service_type, $service_name);
+		$uservice = sprintf(
+			'oauth%s[%s]', $service_type, $service_name);
 		$args['service'] = [
 			'uname' => $uname,
 			'uservice' => $uservice,
@@ -423,12 +442,6 @@ abstract class OAuthStore extends AdminStore {
 		# register passwordless
 
 		$retval = $this->adm_self_add_user_passwordless($args);
-		if ($retval[0] !== 0)
-			# saving data fails, most likely server error
-			return [OAuthError::SAVING_DATA_FAILED];
-		if (!isset($retval[1]) || !isset($retval[1]['token']))
-			# token not received
-			return [OAuthError::MISSING_TOKEN];
 		$udata = $retval[1];
 		$session_token = $udata['token'];
 
@@ -468,7 +481,7 @@ abstract class OAuthStore extends AdminStore {
 			$ins['refresh'] = $refresh_token;
 		$sql->insert('uoauth', $ins);
 
-		return [0, $session_token];
+		return $session_token;
 	}
 
 

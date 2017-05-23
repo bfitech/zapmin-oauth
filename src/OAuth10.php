@@ -8,19 +8,6 @@ use BFITech\ZapCore\Common;
 
 
 /**
- * Error class.
- */
-class OAuth10PermissionError extends \Exception {
-	/** Missing dict. */
-	const INCOMPLETE_DATA = 0x0100;
-	/** Provider doesn't return HTTP 200. */
-	const SERVICE_ERROR = 0x0101;
-	/** Missing token. */
-	const MISSING_TOKEN = 0x0102;
-}
-
-
-/**
  * OAuth1.0 class.
  */
 class OAuth10Permission extends OAuthCommon {
@@ -132,9 +119,10 @@ class OAuth10Permission extends OAuthCommon {
 	 * @return bool|array False on failure, otherwise dict with keys:
 	 *   - oauth_token
 	 *   - oauth_token_secret
-	 *   - oauth_callback_confirmed which is set to string 'true'
+	 *   - oauth_callback_confirmed which, a string set to 'true'
+	 *   - oauth_verifier, optional
 	 */
-	protected function request_token() {
+	private function request_token() {
 		$auth_header = $this->generate_auth_header(
 			$this->url_request_token, 'POST',
 			['oauth_callback' => $this->url_callback]
@@ -175,10 +163,10 @@ class OAuth10Permission extends OAuthCommon {
 	 *
 	 * @param string $oauth_token The 'oauth_token' returned by
 	 *     previous request_token().
-	 * @param string|null $oauth_verifier The 'oauth_verifier' returned by
-	 *     previous request_token(), if exists.
+	 * @param string|null $oauth_verifier The 'oauth_verifier' returned
+	 *     by previous request_token(), if exists.
 	 */
-	protected function authenticate_request_token(
+	private function authenticate_request_token(
 		$oauth_token, $oauth_verifier=null
 	) {
 		$url = sprintf(
@@ -206,36 +194,32 @@ class OAuth10Permission extends OAuthCommon {
 		if (!$resp)
 			return null;
 		extract($resp);
-		if (!isset($oauth_token))
-			return null;
-		if (!isset($oauth_verifier))
-			$oauth_verifier = null;
 		return $this->authenticate_request_token(
 			$oauth_token, $oauth_verifier);
 	}
 
 	/**
-	 *
 	 * Site callback.
 	 *
-	 * Web only. Use this in a route.
+	 * Receive request tokens from query string after successful
+	 * redirect to callback URL, then use tokens to obtain access
+	 * tokens from provider.
 	 *
-	 * @param array $args Callback GET parameters sent by remote service,
-	 *     must contain request token keys:
+	 * Use this in OAuthRoute::route_byway_callback only.
+	 *
+	 * @param array $get Callback GET parameters sent by remote service
+	 *     with keys:
 	 *         - oauth_token
-	 *         - oauth_verifier
-	 * @return array An array [errno, data], errno != 0 for failure. On
-	 *     success, data must have access token keys:
+	 *         - oauth_verifier, OAuth1.0a only
+	 * @return array An array `[errno, data]`, with `errno != 0` for
+	 *     failure. On success, save these keys for later use:
 	 *         - oauth_token
 	 *         - oauth_token_secret
-	 *     which should be saved for later use.
 	 */
-	public function site_callback($args) {
-
-		$get = $args['get'];
+	public function site_callback($get) {
 
 		if (!Common::check_idict($get, ['oauth_token']))
-			return [OAuth10PermissionError::INCOMPLETE_DATA];
+			return [OAuthError::INCOMPLETE_DATA, []];
 		extract($get);
 
 		$auth_header = $this->generate_auth_header(
@@ -249,7 +233,7 @@ class OAuth10Permission extends OAuthCommon {
 		];
 
 		$post_data = [];
-		if (isset($get['oauth_verifier'])) {
+		if (isset($oauth_verifier)) {
 			# required by 1.0a
 			$post_data['oauth_verifier'] = $oauth_verifier;
 		}
@@ -260,15 +244,19 @@ class OAuth10Permission extends OAuthCommon {
 			'headers' => $headers,
 			'post' => $post_data
 		]);
+		// @codeCoverageIgnoreStart
 		if ($resp[0] !== 200)
-			return [OAuth10PermissionError::SERVICE_ERROR];
+			return [OAuthError::SERVICE_ERROR, []];
+		// @codeCoverageIgnoreEnd
 
 		parse_str($resp[1], $args);
+		// @codeCoverageIgnoreStart
 		if (false === $args = Common::check_idict($args, [
 			'oauth_token',
 			'oauth_token_secret',
 		]))
-			return [OAuth10PermissionError::MISSING_TOKEN];
+			return [OAuthError::TOKEN_MISSING, []];
+		// @codeCoverageIgnoreEnd
 
 		# save these two for later actions
 		return [0, [
@@ -313,23 +301,34 @@ class OAuth10Action extends OAuth10Permission {
 	 * Generic authorized request wrapper.
 	 *
 	 * This is all we need to perform authorized operations. The URL,
-	 * method and arguments depend on respective service.
+	 * method and arguments depend on respective service. If URL
+	 * contains query string, it will be appended to GET and the
+	 * URL is rebuild without query string.
 	 *
-	 * @param array $kwargs http_client kwargs parameter. 
-	 * @todo This won't stop $kwargs['url'] from having query
-	 *     string. It must be isolated in $kwargs['get'] and fed
-	 *     to extra params of $this->generate_auth_header() so
-	 *     it will generate valid base string. URL with query
-	 *     string will fail the signing.
+	 * @param array $kwargs Common::http_client kwargs parameter.
+	 * @return array Standard return value of Common::http_client.
 	 */
 	public function request($kwargs) {
-		if (!Common::check_idict($kwargs, ['method', 'url']))
-			return [-1, null];
-		$bstr_raw = ['oauth_token' => $this->access_token];
-		if (isset($kwargs['get']) && $kwargs['get'])
-			$bstr_raw = array_merge($bstr_raw, $kwargs['get']);
+		if (!isset($kwargs['get']))
+			$kwargs['get'] = [];
+		$kwargs['get']['oauth_token'] = $this->access_token;
+
+		$purl = parse_url($kwargs['url']);
+		if (!Common::check_idict($purl, ['scheme', 'host', 'path']))
+			return [-1, []];
+		extract($purl);
+
+		if (isset($query)) {
+			parse_str($query, $parsed_get);
+			if ($parsed_get)
+				$kwargs['get'] = array_merge($kwargs['get'],
+					$parsed_get);
+			$kwargs['url'] = sprintf('%s://%s%s', $scheme, $host,
+				$path);
+		}
+
 		$auth_header = $this->generate_auth_header(
-			$kwargs['url'], $kwargs['method'], $bstr_raw,
+			$kwargs['url'], $kwargs['method'], $kwargs['get'],
 			$this->access_token_secret
 		);
 		if (!isset($kwargs['headers']))

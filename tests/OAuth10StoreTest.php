@@ -10,21 +10,24 @@ use BFITech\ZapCore\Logger;
 use BFITech\ZapStore\SQLite3;
 use BFITech\ZapAdmin\AdminStore;
 use BFITech\ZapAdmin\OAuthStore;
-use BFITech\ZapAdmin\OAuthError;
+use BFITech\ZapOAuth\OAuthError;
 
 
 class OAuth10Store extends OAuthStore {
 	public function oauth_fetch_profile(
 		$oauth_action, $service_type, $service_name, $kwargs=[]
 	) {
-		if ($service_name != 'twitter')
-			return [];
-		return [
-			'uname' => 'john',
-			'fname' => 'John Smith',
-			'email' => 'john@example.org',
-			'site' => 'http://example.org',
-		];
+		return ServiceFixture::oauth_fetch_profile(
+			$oauth_action, $service_type, $service_name, $kwargs);
+	}
+	public function oauth_add_user(
+		$service_type, $service_name, $uname, $access_token,
+		$access_token_secret=null, $refresh_token=null, $profile=[]
+	) {
+		return parent::oauth_add_user(
+			$service_type, $service_name, $uname, $access_token,
+			$access_token_secret, $refresh_token, $profile
+		);
 	}
 }
 
@@ -37,36 +40,57 @@ class OAuth10Test extends TestCase {
 		self::$logger = new Logger(Logger::ERROR, '/dev/null');
 	}
 
-	public function test_oauth10_store() {
+	private function register_services() {
 		$store = new SQLite3(
 			['dbname' => ':memory:'], self::$logger);
 		$adm = new OAuth10Store($store, self::$logger);
 
 		try {
 			$adm->oauth_add_service(
-				'30',
-				'twitter',
+				'30', 'twitter',
 				'consumer-key', 'consumer-secret-test',
 				'http://www.example.org/10/auth_request',
 				'http://www.example.org/10/auth',
 				'http://www.example.org/10/access',
-				null,
-				null
+				null, null
 			);
 		} catch(OAuthError $e) {
 			# invalid service
 		}
 
-		$adm->oauth_add_service(
-			'10', 'twitter',
-			'consumer-key-test',
-			'consumer-secret-test',
-			'http://example.org/10/auth_request',
-			'http://example.org/10/auth',
-			'http://example.org/10/access',
-			null,
-			'http://localhost'
-		);
+		$make_service = function($srv) use($adm) {
+			call_user_func_array([$adm, 'oauth_add_service'],[
+				'10', $srv,
+				'consumer-key-test',
+				'consumer-secret-test',
+				"http://${srv}.example.org/10/auth_request",
+				"http://${srv}.example.org/10/auth",
+				"http://${srv}.example.org/10/access",
+				null, 'http://localhost'
+			]);
+		};
+		# register these bogus services
+		foreach (['trakt', 'trello', 'twitter', 'tumblr'] as $srv)
+			$make_service($srv);
+
+		return $adm;
+	}
+
+	public function test_oauth10_store_request_fail() {
+		$adm = $this->register_services();
+		# these all won't pass request token phase
+		foreach (['trakt', 'trello', 'tumblr'] as $srv) {
+			$perm = $adm->oauth_get_permission_instance('10', $srv);
+			# patch http client
+			$perm->http_client_custom = function($args) {
+				return ServiceFixture::oauth10($args);
+			};
+			$this->assertNull($perm->get_access_token_url());
+		}
+	}
+
+	public function test_oauth10_store() {
+		$adm = $this->register_services();
 
 		# create OAuth1.0 permission instance
 		$perm = $adm->oauth_get_permission_instance('10', 'twitter');
@@ -109,7 +133,7 @@ class OAuth10Test extends TestCase {
 		# get access token from params provided by site callback
 		# which internally makes request to POST: /10/access and
 		# attains 'oauth_token' and 'oauth_token_secret' on success
-		$rv = $perm->site_callback(['get' => $res]);
+		$rv = $perm->site_callback($res);
 		$this->assertEquals($rv[0], 0);
 		$this->assertSame(array_keys($rv[1]),
 			['access_token', 'access_token_secret']);
@@ -123,10 +147,17 @@ class OAuth10Test extends TestCase {
 			return ServiceFixture::oauth10($args);
 		};
 
-		# use access token to fetch profile
+		# use access token for a non-well-formed resource
 		$rv = $act->request([
 			'method' => 'GET',
-			'url' => 'http://example.org/10/api/me',
+			'url' => 'twitter.example.org/10/api/me?q=1',
+		]);
+		$this->assertEquals($rv[0], -1);
+
+		# use access token to fetch profile successfully
+		$rv = $act->request([
+			'method' => 'GET',
+			'url' => 'http://twitter.example.org/10/api/me?q=1',
 		]);
 		$data = json_decode($rv[1], true);
 		$this->assertEquals($data['uname'], 'john');
@@ -134,12 +165,10 @@ class OAuth10Test extends TestCase {
 		# fake-fetch profile
 		$profile = $adm->oauth_fetch_profile($act, '10', 'twitter');
 
-		# save to database
-		$rv = $adm->oauth_add_user(
+		# save to database and obtain session token
+		$session_token = $adm->oauth_add_user(
 			'10', 'twitter', $data['uname'],
 			$access_token, $access_token_secret, null, $data);
-		$this->assertEquals($rv[0], 0);
-		$session_token = $rv[1];
 
 		# check if we're truly signed in
 		$adm->adm_set_user_token($session_token);
@@ -161,11 +190,11 @@ class OAuth10Test extends TestCase {
 		};
 		$rv = $act->request([
 			'method' => 'GET',
-			'url' => 'http://example.org/10/api/me'
+			'url' => 'http://twitter.example.org/10/api/me'
 		]);
 		$data = json_decode($rv[1], true);
 		$this->assertEquals($data['uname'], 'john');
-	}
 
+	}
 }
 

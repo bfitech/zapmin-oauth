@@ -8,19 +8,6 @@ use BFITech\ZapCore\Common;
 
 
 /**
- * Error class.
- */
-class OAuth20PermissionError extends \Exception {
-	/** Missing dict. */
-	const INCOMPLETE_DATA = 0x0100;
-	/** Provider doesn't return HTTP 200. */
-	const SERVICE_ERROR = 0x0101;
-	/** Missing token. */
-	const MISSING_TOKEN = 0x0102;
-}
-
-
-/**
  * OAuth2.0 class.
  */
 class OAuth20Permission extends OAuthCommon {
@@ -38,6 +25,17 @@ class OAuth20Permission extends OAuthCommon {
 	private $url_callback = null;
 	/** Scope. */
 	private $scope = null;
+
+	/**
+	 * Add `Authorization: Basic XXX` to site callback. Probably needed
+	 * by Yahoo, Reddit, LinkedIn.
+	 */
+	public $auth_basic_for_site_callback = false;
+
+	/**
+	 * Extra parameters for OAuth20Permission::get_access_token_url.
+	 */
+	public $access_token_url_extra_params = [];
 
 	/**
 	 * Constructor.
@@ -58,14 +56,14 @@ class OAuth20Permission extends OAuthCommon {
 	/**
 	 * Get authentication URL.
 	 *
-	 * @param array $extra_params Additional parameters for the GET
-	 *     request, may also override default values.
-	 * @return string Full URL that can be used by client.
+	 * @return string Full URL that can be opened to obtain access
+	 *     token.
 	 */
-	public function get_access_token_url($extra_params=[]) {
-		# Redirect_uri must be underneath callback_uri on github, but can
-		# be anything, even multiple or google; defaults to
-		# $this->callback_uri
+	public function get_access_token_url() {
+
+		# redirect_uri must be underneath callback_uri on github, but can
+		# be anything, even multiple on google. Defaults to
+		# $this->callback_uri.
 
 		$url = $this->url_request_token_auth;
 		$params = [
@@ -75,7 +73,7 @@ class OAuth20Permission extends OAuthCommon {
 			'redirect_uri' => $this->callback_uri,
 			'response_type' => 'code',
 		];
-		foreach ($extra_params as $key => $val)
+		foreach ($this->access_token_url_extra_params as $key => $val)
 			$params[$key] = $val;
 		$url .= strstr($url, '?') === false ? '?' : '&';
 		$url .= http_build_query($params);
@@ -85,42 +83,50 @@ class OAuth20Permission extends OAuthCommon {
 	/**
 	 * Site callback.
 	 *
-	 * @param array $args Route arguments.
-	 * @return array [errno, body] where errno == 0 on success.
+	 * Receive request tokens from query string after successful
+	 * redirect to callback URL, then use tokens to obtain access
+	 * tokens from provider.
+	 *
+	 * Use this in OAuthRoute::route_byway_callback only.
+	 *
+	 * @param array $get Callback GET parameters sent by remote service,
+	 *     with keys: `code` and `state`.
+	 * @return array An array `[errno, data]`, with `errno != 0` for
+	 *     failure. On success, data at least has key `access_token`
+	 *     which should be saved for later use. Keys:
+	 *         - `access_token`
+	 *         - `refresh_token`, optional
+	 *         - `expires_in`, optional, in seconds
+	 *         - `token_type`, optional, typically 'bearer'
+	 *         - `scope`, optional
 	 */
-	public function site_callback($args) {
+	public function site_callback($get) {
 		$redirect_uri = $this->callback_uri;
 
-		$get = $args['get'];
 		if (!Common::check_idict($get, ['code', 'state']))
 			# We only check 'state' existence. We don't actually
 			# match it with previously-generated one in auth page.
-			return [OAuth20PermissionError::INCOMPLETE_DATA];
+			return [OAuthError::INCOMPLETE_DATA, []];
 		extract($get);
 
 		$url = $this->url_access_token;
 
 		$headers = [
-			'Accept: application/json', # get JSON
+			'Accept: application/json',
 			'Content-Type: application/x-www-form-urlencoded',
 			'Expect: ',
 		];
 
-		# Auth Basic hack for yahoo, reddit, linkedin
-		# @fixme: Only tested on LinkedIn long time ago.
-		foreach(['yahoo', 'reddit', 'linkedin'] as $srv) {
-			if (strstr(substr($url, 0, 20), $srv) < 12) {
-				$headers[] = 'Authorization: Basic ' . base64_encode(
-					$this->client_id . ':' . $this->client_secret);
-			}
-		}
+		# Add optional Auth Basic header.
+		if ($this->auth_basic_for_site_callback)
+			$headers[] = 'Authorization: Basic ' . base64_encode(
+				$this->client_id . ':' . $this->client_secret);
 
 		# OAuth2.0 must use application/x-www-form-urlencoded. Github
 		# accepts multipart/form-data, but Google doesn't. Hence
 		# CURLOPT_POSTFIELDS must use http_build_query() instead of
 		# plain array.
-		# See: http://stackoverflow.com/a/29570240
-
+		# See: https://archive.fo/irKN0#selection-4679.0-4699.34
 		$post = [
 			'client_id' => $this->client_id,
 			'client_secret' => $this->client_secret,
@@ -137,18 +143,18 @@ class OAuth20Permission extends OAuthCommon {
 			'post' => $post,
 			'expect_json' => true
 		]);
+		// @codeCoverageIgnoreStart
 		if ($resp[0] !== 200)
-			return [OAuth20PermissionError::SERVICE_ERROR];
+			return [OAuthError::SERVICE_ERROR, []];
+		// @codeCoverageIgnoreEnd
 
-		# windows stops here, they don't need access token
-		#if (strstr($url, 'microsoftonline') !== false)
-		#	return [0, $ret];
-
-		# OAuth2.0 may send 'refresh_token' key. Every services may
-		# add various additional values, e.g. normalized scope for
+		# OAuth2.0 may send 'refresh_token' key. Services may add
+		# various additional values, e.g. normalized scope for
 		# Github. We'll only check 'access_token'.
+		// @codeCoverageIgnoreStart
 		if (!Common::check_idict($resp[1], ['access_token']))
-			return [OAuth20PermissionError::MISSING_TOKEN];
+			return [OAuthError::TOKEN_MISSING, []];
+		// @codeCoverageIgnoreEnd
 
 		# Store 'access_token' for later API calls.
 		return [0, $resp[1]];
@@ -225,11 +231,16 @@ class OAuth20Action extends OAuthCommon {
 	 *     expected.
 	 * @param bool $bearer If true, 'Authorization: Bearer TOKEN' is
 	 *     sent. Some services allow TOKEN sent via GET.
+	 * @return array Standard http_client retval. Custom HTTP codes:
+	 *     -2 := refresh token or access token URL not set, -1 :=
+	 *     connection error.
 	 * @todo Untested on live service.
 	 */
 	public function refresh($expect_json=true, $bearer=true) {
+		// @codeCoverageIgnoreStart
 		if (!$this->refresh_token || !$this->url_access_token)
-			return null;
+			return [-2, []];
+		// @codeCoverageIgnoreEnd
 		$headers = ['Content-Type: application/x-www-form-urlencoded'];
 		if ($bearer)
 			$headers[] = 'Authorization: Bearer ' . $this->access_token;

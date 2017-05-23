@@ -5,9 +5,7 @@ namespace BFITech\ZapAdmin;
 
 
 use BFITech\ZapCore\Common;
-use BFITech\ZapCore\Router;
-use BFITech\ZapCore\Logger;
-use BFITech\ZapStore\SQL;
+use BFITech\ZapOAuth\OAuthError;
 
 
 /**
@@ -18,22 +16,20 @@ use BFITech\ZapStore\SQL;
  */
 class OAuthRoute extends OAuthStore {
 
-	# route handlers
-
 	/**
 	 * Route callback for OAuth* token request URL generator.
 	 *
-	 * @param array $args HTTP variables. This must contain sub-keys:
-	 *     `service_type` and `service_name` in `params` key. Failing
-	 *     to do so will throw exception.
+	 * @param array $args Router variables. This must contain sub-keys:
+	 *     `service_type` and `service_name` in `params` key.
 	 */
 	public function route_byway_auth($args) {
+		$service_type = $service_name = null;
 		$core = $this->core;
 		$params = $args['params'];
 		if (!Common::check_idict($params,
-			['service_name', 'service_type'])
+			['service_type', 'service_name'])
 		) {
-			return $core::pj([2, 0], 404);
+			return $core::pj([OAuthError::INCOMPLETE_DATA], 404);
 		}
 		extract($params);
 
@@ -41,12 +37,14 @@ class OAuthRoute extends OAuthStore {
 			$service_type, $service_name);
 		if (!$perm)
 			# service unknown
-			return $core::pj([2, 0], 404);
+			return $core::pj([OAuthError::SERVICE_UNKNOWN], 404);
+		$perm = $this->oauth_finetune_permission($args, $perm);
 
 		$url = $perm->get_access_token_url();
 		if (!$url)
 			# access token url not obtained
-			return $core::pj([2, 1], 404);
+			return $core::pj([
+				OAuthError::ACCESS_URL_MISSING], 503);
 		return $core::pj([0, $url]);
 	}
 
@@ -66,15 +64,15 @@ class OAuthRoute extends OAuthStore {
 	/**
 	 * Route callback for OAuth* URL callback.
 	 *
-	 * How unfortunate the namings are. First callback is Zap route
+	 * How unfortunate the namings are. First callback is Router
 	 * callback method. The second is OAuth* URL callback.
 	 *
-	 * @param dict $args Standard zap HTTP variables of the form:
+	 * @param dict $args Standard router HTTP variables of the form:
 	 *     @code
 	 *     (dict){
 	 *         'params': (dict){
 	 *             'service_type': (string)service_type,
-	 *             'service_name': (string)service_name,
+	 *             'service_name': (string)service_name
 	 *         }
 	 *     }
 	 *     @endcode
@@ -95,8 +93,9 @@ class OAuthRoute extends OAuthStore {
 		if (!$perm)
 			# service unknown
 			return $core->abort(404);
+		$perm = $this->oauth_finetune_permission($args, $perm);
 
-		$ret = $perm->site_callback($args);
+		$ret = $perm->site_callback($args['get']);
 		if ($ret[0] !== 0)
 			return $this->_route_byway_failed();
 		extract($ret[1]);
@@ -118,30 +117,21 @@ class OAuthRoute extends OAuthStore {
 
 		$profile = $this->oauth_fetch_profile($act,
 			$service_type, $service_name);
-		if (!$profile)
-			return $this->_route_byway_failed();
-		if (!isset($profile['uname']))
+		if (!$profile || !isset($profile['uname']))
 			return $this->_route_byway_failed();
 		$uname = $profile['uname'];
 
-		$rv = $this->oauth_add_user(
+		$session_token = $this->oauth_add_user(
 			$service_type, $service_name,
 			$uname, $access_token, $access_token_secret,
 			$refresh_token, $profile
 		);
-		if ($rv[0] !== 0)
-			return $this->_route_byway_failed();
-
-		$session_token = $rv[1];
 		$expiration = $this->adm_get_byway_expiration();
 
 		# always autologin on success
 
 		$this->adm_set_user_token($session_token);
-		# @fixme Proper token name getter.
-		$token_name = $this->token_name
-			? $this->token_name : 'zapoauth';
-		$core::send_cookie($token_name, $session_token,
+		$core::send_cookie($this->token_name, $session_token,
 			$expiration, '/');
 
 		# success
@@ -150,19 +140,6 @@ class OAuthRoute extends OAuthStore {
 			return $core->redirect($this->oauth_callback_ok_redirect);
 		# or just go home
 		return $core->redirect($core->get_home());
-	}
-
-
-	/**
-	 * Wrapper for $this->core->route().
-	 *
-	 * @param string $path Standard zap router path.
-	 * @param callable $callback Standard zap router callback.
-	 * @param string|array $method Standard zap router request
-	 *     method(s).
-	 */
-	public function route($path, $callback, $method='GET') {
-		$this->core->route($path, $callback, $method);
 	}
 }
 
