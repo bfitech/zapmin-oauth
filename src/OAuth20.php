@@ -175,19 +175,21 @@ class OAuth20Action extends OAuthCommon {
 	/**
 	 * Constructor.
 	 *
-	 * OAuth2.0 only needs $access_token that's passed via query string.
-	 * Theoretically the token is short-lived and must regularly be
-	 * refreshed, which OAuth1.0 doesn't need to.
+	 * OAuth2.0 only needs `$access_token` being passed via query
+	 * string or custom request header. Theoretically, the token is
+	 * short-lived and must regularly be refreshed, which OAuth1.0
+	 * doesn't need to.
 	 *
 	 * @param string $consumer_key Consumer key.
 	 * @param string $consumer_secret Consumer secret. 
 	 * @param string $access_token User access token returned by
-	 *     site_callback() or retrieved from some storage.
-	 * @param string $refresh_token User refresh token returned by
-	 *     site_callback() or retrieved from some storage. Only required
-	 *     by refresh().
-	 * @param string $url_access_token Access token authorization URL
-	 *     as in Oauth20Permission. Only required by refresh().
+	 *     OAuth20Permission::site_callback or retrieved from some
+	 *     storage.
+	 * @param string|null $refresh_token User refresh token returned by
+	 *     OAuth20Permission::site_callback or retrieved from some
+	 *     storage. Only required by OAuth20Action::refresh.
+	 * @param string|null $url_access_token Access token authorization
+	 *     URL. Only required by OAuth20Action::refresh.
 	 */
 	public function __construct(
 		$consumer_key, $consumer_secret,
@@ -204,12 +206,13 @@ class OAuth20Action extends OAuthCommon {
 	/**
 	 * Generic authorized request wrapper.
 	 *
-	 * This completely lets a caller to do whatever it wants with
-	 * access token since each service use it differently.
+	 * This lets a caller to do whatever it wants with a service,
+	 * according to respective service API.
 	 *
 	 * @param array $kwargs http_client kwarg parameters. 
-	 * @param bool $bearer If true, 'Authorization: Bearer TOKEN' is
-	 *     sent. Some services allow TOKEN sent via GET.
+	 * @param bool $bearer If true, "Authorization: Bearer TOKEN"
+	 *     request header is sent. Some services allow TOKEN sent via
+	 *     GET.
 	 */
 	public function request($kwargs, $bearer=true) {
 		if (!isset($kwargs['headers']))
@@ -227,13 +230,15 @@ class OAuth20Action extends OAuthCommon {
 	/**
 	 * Refresh token.
 	 *
+	 * This will request a new access token given a refresh token.
+	 * Not all providers provice this facility.
+	 *
 	 * @param bool $expect_json Whether JSON response is to be
 	 *     expected.
 	 * @param bool $bearer If true, 'Authorization: Bearer TOKEN' is
 	 *     sent. Some services allow TOKEN sent via GET.
-	 * @return array Standard http_client retval. Custom HTTP codes:
-	 *     -2 := refresh token or access token URL not set, -1 :=
-	 *     connection error.
+	 * @return array Standard Common::http_client retval. Additional
+	 *     custom HTTP code: -2 := refresh token.
 	 * @todo Untested on live service.
 	 */
 	public function refresh($expect_json=true, $bearer=true) {
@@ -261,6 +266,5 @@ class OAuth20Action extends OAuthCommon {
 			'expect_json' => $expect_json,
 		]);
 	}
-
 }
 

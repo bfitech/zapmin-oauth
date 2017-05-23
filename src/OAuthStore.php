@@ -56,21 +56,11 @@ abstract class OAuthStore extends AdminRoute {
 	private $initialized = false;
 
 	/**
-	 * Constructor.
-	 *
-	 *
-	 * @param SQL $store An SQL connection.
-	 * @param Logger $logger Logger instance.
-	 * @param RedisConn $redis RedisConn instance.
-	 *
-	 */
-
-	/**
 	 * Configure.
 	 *
 	 * @param string $key Config key. Available key:
 	 *     `force_create_table`.
-	 * @param mixed $vel Config value.
+	 * @param mixed $val Config value.
 	 */
 	public function config($key, $val) {
 		switch ($key) {
