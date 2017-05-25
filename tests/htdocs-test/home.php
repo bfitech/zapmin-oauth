@@ -56,7 +56,7 @@
 
 		s.signIn20 = function() {
 			s.isSigningIn = true;
-			$http.post('/byway/oauth/20/google/auth', {
+			$http.post('/byway/oauth/20/github/auth', {
 			}).then(function(ret){
 				top.location.href = ret.data.data;
 			}, function(){
@@ -115,7 +115,7 @@
 			</p>
 			<p>
 				<button ng-click='signIn20()' ng-disabled=isSigningIn>
-					OAuth2.0 with Google
+					OAuth2.0 with Github
 				</button>
 			</p>
 			<p>

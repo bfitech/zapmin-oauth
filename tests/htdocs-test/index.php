@@ -15,6 +15,29 @@ class OAuthRouteHTTP extends OAuthRoute {
 	public function oauth_fetch_profile(
 		$oauth_action, $service_type, $service_name, $kwargs=[]
 	) {
+		if ($service_name == 'github') {
+			$url = 'https://api.github.com/user';
+			$headers = [
+				'User-Agent: Mozilla/5.0 (X11; Linux x86_64) ' .
+				'AppleWebKit/537.36 (KHTML, like Gecko) ' .
+				'Chrome/51.0.2704.103 Safari/537.36'
+			];
+			$rv = $oauth_action->request([
+				'method' => 'GET',
+				'url' => $url,
+				'headers' => $headers,
+				'expect_json' => true,
+			]);
+			if($rv[0] !== 200)
+				return [];
+			$data = $rv[1];
+			return [
+				'uname' => $data['login'],
+				'fname' => $data['name'],
+				'email' => $data['email'],
+				'site' => $data['blog'],
+			];
+		}
 		if ($service_name != 'reddit')
 			return [];
 		return [
