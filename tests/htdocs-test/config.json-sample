@@ -1,7 +1,7 @@
 [
   [
-    '10',
-    'twitter',
+    "10",
+    "twitter",
     "XXXXXXXXXXXXXXXXXXX333",
     "yyyyyyyyyyyyyyyyyyqqqqqqqqqqqqqqqqqqqqqqq",
     "https://api.twitter.com/oauth/request_token",
