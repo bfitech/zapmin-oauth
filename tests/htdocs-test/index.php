@@ -45,16 +45,9 @@ class OAuthRouteHTTP extends OAuthRoute {
 
 $logger = new Logger(Logger::ERROR, __DIR__ . '/zapmin-oauth.log');
 $core = new Router(null, null, true, $logger);
-$store = new SQLite3(['dbname' => __DIR__ . '/zapmin-oauth.sq3']);
-$acore = new AdminRoute([
-	# for installing udata table only
-	'expiration' => 3600,
-	'token_name' => 'oauthtest',
-	'store_instance' => $store,
-	'core_instance' => $core,
-	'logger_instance' => $logger,
-]);
-$ocore = new OAuthRouteHTTP($core, $store, null, $logger);
+$store = new SQLite3(['dbname' => __DIR__ . '/zapmin-oauth.sq3'], $logger);
+$acore = new AdminRoute($store, $logger, null, $core);
+$ocore = new OAuthRouteHTTP($store, $logger, null, $core);
 
 
 # Make sure server config exists. Use sample for a quick start.
