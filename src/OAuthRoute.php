@@ -78,7 +78,9 @@ class OAuthRoute extends OAuthStore {
 	 *     @endcode
 	 */
 	public function route_byway_callback($args) {
+
 		$core = $this->core;
+		$logger = $this->logger;
 
 		$params = $args['params'];
 		if (!Common::check_idict($params,
@@ -90,14 +92,22 @@ class OAuthRoute extends OAuthStore {
 
 		$perm = $this->oauth_get_permission_instance(
 			$service_type, $service_name);
-		if (!$perm)
-			# service unknown
+		if (!$perm) {
+			$logger->info(
+				'ZapOAuth: user attempts to use unknown service.');
 			return $core->abort(404);
+		}
 		$perm = $this->oauth_finetune_permission($args, $perm);
 
+		// @todo Tell $this->_route_byway_failed to differ between
+		// provider error, server error, or user rejects authentication.
+		// This may be different from one provider to another.
 		$ret = $perm->site_callback($args['get']);
-		if ($ret[0] !== 0)
+		if ($ret[0] !== 0) {
+			$logger->info(
+				'ZapOAuth: access token not obtained from callback.');
 			return $this->_route_byway_failed();
+		}
 		extract($ret[1]);
 
 		# save obtained tokens to properties
@@ -117,8 +127,10 @@ class OAuthRoute extends OAuthStore {
 
 		$profile = $this->oauth_fetch_profile($act,
 			$service_type, $service_name);
-		if (!$profile || !isset($profile['uname']))
+		if (!$profile || !isset($profile['uname'])) {
+			$logger->error('ZapOAuth: fetching profile failed.');
 			return $this->_route_byway_failed();
+		}
 		$uname = $profile['uname'];
 
 		$session_token = $this->oauth_add_user(
@@ -131,8 +143,8 @@ class OAuthRoute extends OAuthStore {
 		# always autologin on success
 
 		$this->adm_set_user_token($session_token);
-		$core::send_cookie($this->token_name, $session_token,
-			$expiration, '/');
+		$core->send_cookie($this->token_name, $session_token,
+			time() + $expiration, '/');
 
 		# success
 		if ($this->oauth_callback_ok_redirect)

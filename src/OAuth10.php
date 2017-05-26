@@ -194,6 +194,8 @@ class OAuth10Permission extends OAuthCommon {
 		if (!$resp)
 			return null;
 		extract($resp);
+		if (!isset($oauth_verifier))
+			$oauth_verifier = null;
 		return $this->authenticate_request_token(
 			$oauth_token, $oauth_verifier);
 	}
@@ -242,7 +244,8 @@ class OAuth10Permission extends OAuthCommon {
 			'url' => $this->url_access_token,
 			'method' => 'POST',
 			'headers' => $headers,
-			'post' => $post_data
+			'post' => $post_data,
+			'expect_json' => false,
 		]);
 		// @codeCoverageIgnoreStart
 		if ($resp[0] !== 200)

@@ -12,13 +12,13 @@
   ],
   [
     "20",
-    "google",
-    "99999999999-uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu.apps.googleusercontent.com",
-    "EEEEEEE_TTTTT_rrrrrrrrrr",
+    "github",
+    "xxxxxxxxxxxxxxxxxxxx",
+    "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
     null,
-    "https://accounts.google.com/o/oauth2/auth",
-    "https://www.googleapis.com/oauth2/v3/token",
-    "profile",
-    "http://example.org/byway/oauth/20/google/callback"
+    "https://github.com/login/oauth/authorize",
+    "https://github.com/login/oauth/access_token",
+    "user:email",
+    "http://example.org/byway/oauth/20/github/callback"
   ]
 ]
