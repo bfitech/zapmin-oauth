@@ -138,13 +138,14 @@ class OAuthRoute extends OAuthStore {
 			$uname, $access_token, $access_token_secret,
 			$refresh_token, $profile
 		);
-		$expiration = $this->adm_get_byway_expiration();
+		$expiration = $this->store->unix_epoch() +
+			$this->adm_get_byway_expiration();
 
 		# always autologin on success
 
 		$this->adm_set_user_token($session_token);
 		$core->send_cookie($this->token_name, $session_token,
-			time() + $expiration, '/');
+			$expiration, '/');
 
 		# success
 		if ($this->oauth_callback_ok_redirect)
