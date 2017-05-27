@@ -131,6 +131,9 @@ class OAuthRoute extends OAuthStore {
 			$logger->error('ZapOAuth: fetching profile failed.');
 			return $this->_route_byway_failed();
 		}
+		$logger->info(
+			sprintf("ZapOAuth: fetch profile : %s.",
+				json_encode($profile)));
 		$uname = $profile['uname'];
 
 		$session_token = $this->oauth_add_user(
@@ -146,6 +149,9 @@ class OAuthRoute extends OAuthStore {
 		$this->adm_set_user_token($session_token);
 		$core->send_cookie($this->token_name, $session_token,
 			$expiration, '/');
+		$logger->debug(
+			sprintf("ZapOAuth: set-cookie [%s] <- %s.",
+				$this->token_name, $session_token));
 
 		# success
 		if ($this->oauth_callback_ok_redirect)
