@@ -101,12 +101,17 @@ class OAuth20Permission extends OAuthCommon {
 	 *         - `scope`, optional
 	 */
 	public function site_callback($get) {
+		$logger = $this->logger;
 		$redirect_uri = $this->callback_uri;
 
-		if (!Common::check_idict($get, ['code', 'state']))
+		if (!Common::check_idict($get, ['code', 'state'])) {
 			# We only check 'state' existence. We don't actually
 			# match it with previously-generated one in auth page.
+			$msg = sprintf("Missing parameters: %s", 
+				json_encode($get));
+			$logger->error("OAuth: $msg");
 			return [OAuthError::INCOMPLETE_DATA, []];
+		}
 		extract($get);
 
 		$url = $this->url_access_token;
@@ -144,16 +149,24 @@ class OAuth20Permission extends OAuthCommon {
 			'expect_json' => true
 		]);
 		// @codeCoverageIgnoreStart
-		if ($resp[0] !== 200)
+		if ($resp[0] !== 200) {
+			$msg = sprintf("Failed to verify token: %s", 
+				json_encode($resp));
+			$logger->error("OAuth: $msg");
 			return [OAuthError::SERVICE_ERROR, []];
+		}
 		// @codeCoverageIgnoreEnd
 
 		# OAuth2.0 may send 'refresh_token' key. Services may add
 		# various additional values, e.g. normalized scope for
 		# Github. We'll only check 'access_token'.
 		// @codeCoverageIgnoreStart
-		if (!Common::check_idict($resp[1], ['access_token']))
+		if (!Common::check_idict($resp[1], ['access_token'])) {
+			$msg = sprintf("Missing token: %s", 
+				json_encode($resp));
+			$logger->error("OAuth: $msg");
 			return [OAuthError::TOKEN_MISSING, []];
+		}
 		// @codeCoverageIgnoreEnd
 
 		# Store 'access_token' for later API calls.

@@ -131,7 +131,7 @@ class OAuthRoute extends OAuthStore {
 			$logger->error('ZapOAuth: fetching profile failed.');
 			return $this->_route_byway_failed();
 		}
-		$logger->info(
+		$logger->debug(
 			sprintf("ZapOAuth: fetch profile : %s.",
 				json_encode($profile)));
 		$uname = $profile['uname'];

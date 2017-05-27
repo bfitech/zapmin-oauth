@@ -231,13 +231,19 @@ abstract class OAuthStore extends AdminRoute {
 		$url_token, $url_token_auth, $url_access,
 		$scope, $url_callback
 	) {
-		if (!in_array($service_type, ['10', '20']))
-			throw new zo\OAuthError(
-				"Invalid service type: '$service_type'.");
+		$logger = $this->logger;
+
+		if (!in_array($service_type, ['10', '20'])) {
+			$msg = "Invalid service type: '".$service_type."'.";
+			$logger->error($msg);
+			throw new zo\OAuthError($msg);
+		}
 
 		$key = $service_name . '-' . $service_type;
-		if (isset($this->oauth_service_configs[$key]))
+		if (isset($this->oauth_service_configs[$key])) {
+			$logger->error("OAuth: $msg");
 			return false;
+		}
 
 		$this->oauth_service_configs[$key] = [
 			'consumer_key' => $consumer_key,
