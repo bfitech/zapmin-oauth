@@ -14,6 +14,46 @@ class OAuthRouteHTTP extends OAuthRoute {
 	public function oauth_fetch_profile(
 		$oauth_action, $service_type, $service_name, $kwargs=[]
 	) {
+		if ($service_name == 'google') {
+			# make request
+			$fields = 'id,displayName,emails,url';
+			$resp = $oauth_action->request([
+				'method' => 'GET',
+				'url' => 'https://www.googleapis.com/plus/v1/people/me',
+				'headers' => $headers,
+				'get' => [
+		            'fields' => $fields,
+		        ],
+				'expect_json' => true,
+			]);
+			if($resp[0] !== 200)
+				return [];
+			$data = $resp[1];
+
+			# uname must exists
+			$profile = ['uname' => $data['id']];
+			if (!isset($data['id']))
+				return [];
+
+			# additional data
+			if (isset($data['emails']) && is_array($data['emails'])) {
+				foreach ($data['emails'] as $email) {
+					if (!isset($email['value']))
+						continue;
+					$profile['email'] = $email['value'];
+					break;
+				}
+			}
+			foreach([
+				'displayName' => 'fname',
+				'url' => 'site',
+			] as $oauth_key => $zap_key) {
+				if (isset($data[$oauth_key]) && $data[$oauth_key])
+					$profile[$zap_key] = $data[$oauth_key];
+			}
+			return $profile;
+		}
+
 		if ($service_name == 'github') {
 			# github needs UA
 			$headers = ['User-Agent: curl/7.47.0'];

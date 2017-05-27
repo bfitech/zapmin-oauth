@@ -20,5 +20,16 @@
     "https://github.com/login/oauth/access_token",
     "user:email",
     "http://example.org/byway/oauth/20/github/callback"
+  ],
+  [
+    "20",
+    "google",
+    "xxxxxxxxxxxx-TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT.apps.googleusercontent.com",
+    "TTTTTTTTTTTTT-TTTTTTTTTT",
+    null,
+    "https://accounts.google.com/o/oauth2/v2/auth",
+    "https://www.googleapis.com/oauth2/v4/token",
+    "https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile",
+    "http://example.org/byway/oauth/20/google/callback"
   ]
 ]

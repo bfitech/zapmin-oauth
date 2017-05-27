@@ -66,6 +66,18 @@
 			});
 		};
 
+		s.signIn20Google = function() {
+			s.isSigningIn = true;
+			$http.post('/byway/oauth/20/google/auth', {
+			}).then(function(ret){
+				top.location.href = ret.data.data;
+			}, function(){
+				s.errMsg = 'Cannot connect to remove server.';
+			}).then(function(){
+				s.isSigningIn = false;
+			});
+		};
+
 		s.signInXX = function() {
 			s.isSigningIn = true;
 			$http.post('/byway/oauth/30/something/auth', {
@@ -116,6 +128,11 @@
 			<p>
 				<button ng-click='signIn20()' ng-disabled=isSigningIn>
 					OAuth2.0 with Github
+				</button>
+			</p>
+			<p>
+				<button ng-click='signIn20Google()' ng-disabled=isSigningIn>
+					OAuth2.0 with Google+
 				</button>
 			</p>
 			<p>
