@@ -241,6 +241,7 @@ abstract class OAuthStore extends AdminRoute {
 
 		$key = $service_name . '-' . $service_type;
 		if (isset($this->oauth_service_configs[$key])) {
+			$msg = "Missing configurations";
 			$logger->error("OAuth: $msg");
 			return false;
 		}
@@ -269,6 +270,7 @@ abstract class OAuthStore extends AdminRoute {
 	public function oauth_get_permission_instance(
 		$service_type, $service_name
 	) {
+		$logger = $this->logger;
 		$key = $service_name . '-' . $service_type;
 		if (!isset($this->oauth_service_configs[$key]))
 			# key invalid
@@ -279,13 +281,13 @@ abstract class OAuthStore extends AdminRoute {
 			$perm = new zo\OAuth10Permission(
 				$consumer_key, $consumer_secret,
 				$url_request_token, $url_request_token_auth,
-				$url_access_token, $url_callback
+				$url_access_token, $url_callback, $logger
 			);
 		} else {
 			$perm = new zo\OAuth20Permission(
 				$consumer_key, $consumer_secret,
 				$url_request_token_auth, $url_access_token,
-				$url_callback, $scope
+				$url_callback, $scope, $logger
 			);
 		}
 		if (method_exists($this, 'http_client')) {

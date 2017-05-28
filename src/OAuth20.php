@@ -1,11 +1,9 @@
 <?php
 
-
 namespace BFITech\ZapOAuth;
 
-
 use BFITech\ZapCore\Common;
-
+use BFITech\ZapCore\Logger;
 
 /**
  * OAuth2.0 class.
@@ -25,6 +23,8 @@ class OAuth20Permission extends OAuthCommon {
 	private $url_callback = null;
 	/** Scope. */
 	private $scope = null;
+	/** Logger */
+	private $logger = null;
 
 	/**
 	 * Add `Authorization: Basic XXX` to site callback. Probably needed
@@ -43,7 +43,7 @@ class OAuth20Permission extends OAuthCommon {
 	public function __construct(
 		$client_id, $client_secret,
 		$url_request_token_auth, $url_access_token,
-		$callback_uri, $scope
+		$callback_uri, $scope, Logger $logger
 	) {
 		$this->client_id = $client_id;
 		$this->client_secret = $client_secret;
@@ -51,6 +51,7 @@ class OAuth20Permission extends OAuthCommon {
 		$this->url_access_token = $url_access_token;
 		$this->callback_uri = $callback_uri;
 		$this->scope = $scope;
+		$this->logger = $logger;
 	}
 
 	/**
@@ -107,9 +108,11 @@ class OAuth20Permission extends OAuthCommon {
 		if (!Common::check_idict($get, ['code', 'state'])) {
 			# We only check 'state' existence. We don't actually
 			# match it with previously-generated one in auth page.
-			$msg = sprintf("Missing parameters: %s", 
-				json_encode($get));
-			$logger->error("OAuth: $msg");
+			if ($logger) {
+				$msg = sprintf("Missing parameters: %s", 
+					json_encode($get));
+				$logger->error("OAuth: $msg");
+			}
 			return [OAuthError::INCOMPLETE_DATA, []];
 		}
 		extract($get);
@@ -150,9 +153,11 @@ class OAuth20Permission extends OAuthCommon {
 		]);
 		// @codeCoverageIgnoreStart
 		if ($resp[0] !== 200) {
-			$msg = sprintf("Failed to verify token: %s", 
-				json_encode($resp));
-			$logger->error("OAuth: $msg");
+			if ($logger) {
+				$msg = sprintf("Failed to verify token: %s", 
+					json_encode($resp));
+				$logger->error("OAuth: $msg");
+			}
 			return [OAuthError::SERVICE_ERROR, []];
 		}
 		// @codeCoverageIgnoreEnd
@@ -162,9 +167,11 @@ class OAuth20Permission extends OAuthCommon {
 		# Github. We'll only check 'access_token'.
 		// @codeCoverageIgnoreStart
 		if (!Common::check_idict($resp[1], ['access_token'])) {
-			$msg = sprintf("Missing token: %s", 
-				json_encode($resp));
-			$logger->error("OAuth: $msg");
+			if ($logger) {
+				$msg = sprintf("Missing token: %s", 
+					json_encode($resp));
+				$logger->error("OAuth: $msg");
+			}
 			return [OAuthError::TOKEN_MISSING, []];
 		}
 		// @codeCoverageIgnoreEnd
