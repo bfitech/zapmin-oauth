@@ -22,8 +22,8 @@ class OAuthRouteHTTP extends OAuthRoute {
 				'url' => 'https://www.googleapis.com/plus/v1/people/me',
 				'headers' => $headers,
 				'get' => [
-		            'fields' => $fields,
-		        ],
+					'fields' => $fields,
+				],
 				'expect_json' => true,
 			]);
 			if($resp[0] !== 200)
