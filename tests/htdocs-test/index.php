@@ -20,7 +20,6 @@ class OAuthRouteHTTP extends OAuthRoute {
 			$resp = $oauth_action->request([
 				'method' => 'GET',
 				'url' => 'https://www.googleapis.com/plus/v1/people/me',
-				'headers' => $headers,
 				'get' => [
 					'fields' => $fields,
 				],
