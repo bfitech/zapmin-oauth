@@ -1,6 +1,9 @@
 <?php
 
-// ¯\_(ツ)_/¯
+// @todo
+// - Add token refresh button for OAuth2.0 if applicable.
+// - This sample assumes installation in the root path '/'.
+//   Parameterize HTML base to fix this.
 
 ?><!doctype html>
 <html>
@@ -12,7 +15,7 @@
 (function(){
 	"use strict";
 	angular.module('ZapOAuth', []).
-	controller('cred', function($scope, $http){
+	controller('cred', function($scope, $http, $timeout){
 		var s = $scope;
 
 		s.isIn = false;
@@ -42,49 +45,26 @@
 		s.errMsg = null;
 		s.isSigningIn = false;
 
-		s.signIn10 = function() {
+		s.signIn = function(key) {
+			var authUrls = {
+				twitter: '/byway/oauth/10/twitter/auth',
+				github:  '/byway/oauth/20/github/auth',
+				google:  '/byway/oauth/20/google/auth',
+				unknown: '/byway/oauth/30/unknown/auth',
+			};
+			var authUrl = !authUrls[key]
+				? authUrls.unknown : authUrls[key];
 			s.isSigningIn = true;
-			$http.post('/byway/oauth/10/twitter/auth', {
+			$http.post(authUrl, {
 			}).then(function(ret){
 				top.location.href = ret.data.data;
 			}, function(){
-				s.errMsg = 'Cannot connect to remove server.';
-			}).then(function(){
-				s.isSigningIn = false;
-			});
-		};
-
-		s.signIn20 = function() {
-			s.isSigningIn = true;
-			$http.post('/byway/oauth/20/github/auth', {
-			}).then(function(ret){
-				top.location.href = ret.data.data;
-			}, function(){
-				s.errMsg = 'Cannot connect to remove server.';
-			}).then(function(){
-				s.isSigningIn = false;
-			});
-		};
-
-		s.signIn20Google = function() {
-			s.isSigningIn = true;
-			$http.post('/byway/oauth/20/google/auth', {
-			}).then(function(ret){
-				top.location.href = ret.data.data;
-			}, function(){
-				s.errMsg = 'Cannot connect to remove server.';
-			}).then(function(){
-				s.isSigningIn = false;
-			});
-		};
-
-		s.signInXX = function() {
-			s.isSigningIn = true;
-			$http.post('/byway/oauth/30/something/auth', {
-			}).then(function(ret){
-				top.location.href = ret.data.data;
-			}, function(){
-				s.errMsg = 'Unknown service provider.';
+				s.errMsg = key == 'unknown'
+					? 'Service unknown.'
+					: 'Cannot connect to remove server.';
+				$timeout(function(){
+					s.errMsg = null;
+				}, 8e3);
 			}).then(function(){
 				s.isSigningIn = false;
 			});
@@ -101,10 +81,11 @@
 		font-family:monospace;
 	}
 	#box{
-		height:12em;
-		padding:8px;
+		height:14em;
+		padding:8px 16px;
 		border:1px solid rgba(0,0,0,.3);
 		width:400px;
+	}
 	</style>
 </head>
 <body>
@@ -121,27 +102,32 @@
 		</div>
 		<div ng-show=!isIn>
 			<p>
-				<button ng-click='signIn10()' ng-disabled=isSigningIn>
+				<button ng-click='signIn("twitter")'
+					ng-disabled=isSigningIn>
 					OAuth1.0 with Twitter
 				</button>
 			</p>
 			<p>
-				<button ng-click='signIn20()' ng-disabled=isSigningIn>
+				<button ng-click='signIn("github")'
+					ng-disabled=isSigningIn>
 					OAuth2.0 with Github
 				</button>
 			</p>
 			<p>
-				<button ng-click='signIn20Google()' ng-disabled=isSigningIn>
-					OAuth2.0 with Google+
+				<button ng-click='signIn("google")'
+					ng-disabled=isSigningIn>
+					OAuth2.0 with Google
 				</button>
 			</p>
 			<p>
-				<button ng-click='signInXX()' ng-disabled=isSigningIn>
+				<button ng-click='signIn("whatever")'
+					ng-disabled=isSigningIn>
 					Unknown Service
 				</button>
 			</p>
-
-			<h4 ng-show=errMsg>ERROR: {{errMsg}}</h4>
+			<p ng-show=errMsg>
+				<strong>ERROR:</strong> {{errMsg}}
+			</p>
 		</div>
 	</div>
 </div>
