@@ -37,6 +37,14 @@ class ServiceFixture {
 						'oauth_callback_confirmed' => 'true',
 						'oauth_verifier' => 'optional-verifier',
 					])];
+				# response is urlencoded text in HTML body
+				if ($service == 'trakt')
+					# pass trakt without oauth_verifier
+					return [200, http_build_query([
+						'oauth_token' => 'token-' . mt_rand(),
+						'oauth_token_secret' => 'token-secret',
+						'oauth_callback_confirmed' => 'true',
+					])];
 				if ($service == 'tumblr')
 					# fail tumblr on 'oauth_callback_confirmed'
 					return [200, http_build_query([

@@ -70,7 +70,7 @@ class OAuth10Test extends TestCase {
 			]);
 		};
 		# register these bogus services
-		foreach (['trakt', 'trello', 'twitter', 'tumblr'] as $srv)
+		foreach (['trakt', 'trello', 'twitter', 'tumblr', 'reddit'] as $srv)
 			$make_service($srv);
 
 		return $adm;
@@ -79,7 +79,7 @@ class OAuth10Test extends TestCase {
 	public function test_oauth10_store_request_fail() {
 		$adm = $this->register_services();
 		# these all won't pass request token phase
-		foreach (['trakt', 'trello', 'tumblr'] as $srv) {
+		foreach (['reddit', 'trello', 'tumblr'] as $srv) {
 			$perm = $adm->oauth_get_permission_instance('10', $srv);
 			# patch http client
 			$perm->http_client_custom = function($args) {
@@ -91,6 +91,23 @@ class OAuth10Test extends TestCase {
 
 	public function test_oauth10_store() {
 		$adm = $this->register_services();
+
+		# create OAuth1.0 permission instance
+		$perm = $adm->oauth_get_permission_instance('10', 'trakt');
+		# patch http client
+		$perm->http_client_custom = function($args) {
+			return ServiceFixture::oauth10($args);
+		};
+		# -> LOCAL -> REMOTE
+		# get auth url, this will internally make request to
+		# POST: /10/auth_request from local and process response such
+		# that return value is redirect URL on valid auth request
+		$redir_url = $perm->get_access_token_url();
+		## run some tests
+		$purl = parse_url($redir_url);
+		parse_str($purl['query'], $res);
+		$this->assertTrue(isset($res['oauth_token']));
+		$this->assertEquals($purl['path'], '/10/auth');
 
 		# create OAuth1.0 permission instance
 		$perm = $adm->oauth_get_permission_instance('10', 'twitter');
