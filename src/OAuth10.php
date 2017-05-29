@@ -3,24 +3,21 @@
 namespace BFITech\ZapOAuth;
 
 use BFITech\ZapCore\Common;
-use BFITech\ZapCore\Logger;
 
 /**
  * OAuth1.0 class.
  */
 class OAuth10Permission extends OAuthCommon {
-    
-    /** Consumer key. */
-    protected $consumer_key = null;
-    /** Consumer secret. */
+
+	/** Consumer key. */
+	protected $consumer_key = null;
+	/** Consumer secret. */
 	protected $consumer_secret = null;
 
 	private $url_request_token = null;
 	private $url_request_token_auth = null;
 	private $url_access_token = null;
 	private $url_callback = null;
-	
-	public static $logger = null;
 
 	/**
 	 * Constructor.
@@ -28,7 +25,7 @@ class OAuth10Permission extends OAuthCommon {
 	public function __construct(
 		$consumer_key, $consumer_secret,
 		$url_request_token, $url_request_token_auth,
-		$url_access_token, $url_callback, Logger $logger
+		$url_access_token, $url_callback
 	) {
 		$this->consumer_key = $consumer_key;
 		$this->consumer_secret = $consumer_secret;
@@ -38,7 +35,6 @@ class OAuth10Permission extends OAuthCommon {
 
 		$this->url_access_token = $url_access_token;
 		$this->url_callback = $url_callback;
-		self::$logger = $logger;
 	}
 
 	/**
@@ -123,7 +119,6 @@ class OAuth10Permission extends OAuthCommon {
 	 *   - oauth_verifier, optional
 	 */
 	private function request_token() {
-		$logger = self::$logger;
 		$auth_header = $this->generate_auth_header(
 			$this->url_request_token, 'POST',
 			['oauth_callback' => $this->url_callback]
@@ -138,37 +133,18 @@ class OAuth10Permission extends OAuthCommon {
 			'method' => 'POST',
 			'headers' => $headers
 		]);
-		if ($resp[0] !== 200) {
-			if ($logger) {
-				$msg = sprintf("Failed to request token: %s", 
-					json_encode($resp));
-				$logger->error("OAuth: $msg");
-			}
+		if ($resp[0] !== 200)
 			return false;
-		}
 
 		parse_str($resp[1], $args);
 		if (!Common::check_idict($args, [
 			'oauth_token',
 			'oauth_token_secret',
 			'oauth_callback_confirmed'
-		])) {
-			if ($logger) {
-				$msg = sprintf("Missing token args: %s", 
-					json_encode($args));
-				$logger->error("OAuth: $msg");
-			}
+		]))
 			return false;
-		}
-		if ($args['oauth_callback_confirmed'] != 'true') {
-			if ($logger) {
-				$msg = sprintf("Invalid oAuth callback confirmed value: %s", 
-					$args['oauth_callback_confirmed']);
-				$logger->error("OAuth: $msg");
-			}
+		if ($args['oauth_callback_confirmed'] != 'true')
 			return false;
-		}
-
 		return $args;
 	}
 
@@ -239,15 +215,8 @@ class OAuth10Permission extends OAuthCommon {
 	 */
 	public function site_callback($get) {
 
-		$logger = self::$logger;
-		if (!Common::check_idict($get, ['oauth_token'])) {
-			if ($logger) {
-				$msg = sprintf("Missing oAuth token: %s", 
-					json_encode($get));
-				$logger->error("OAuth: $msg");
-			}
+		if (!Common::check_idict($get, ['oauth_token'])) 
 			return [OAuthError::INCOMPLETE_DATA, []];
-		}
 		extract($get);
 
 		$auth_header = $this->generate_auth_header(
@@ -274,14 +243,8 @@ class OAuth10Permission extends OAuthCommon {
 			'expect_json' => false,
 		]);
 		// @codeCoverageIgnoreStart
-		if ($resp[0] !== 200) {
-			if ($logger) {
-				$msg = sprintf("Failed to verify token: %s", 
-					json_encode($resp));
-				$logger->error("OAuth: $msg");
-			}
+		if ($resp[0] !== 200) 
 			return [OAuthError::SERVICE_ERROR, []];
-		}
 		// @codeCoverageIgnoreEnd
 
 		parse_str($resp[1], $args);
@@ -289,14 +252,8 @@ class OAuth10Permission extends OAuthCommon {
 		if (false === $args = Common::check_idict($args, [
 			'oauth_token',
 			'oauth_token_secret',
-		])) {
-			if ($logger){
-				$msg = sprintf("Missing token args: %s", 
-					json_encode($args));
-				$logger->error("OAuth: $msg");
-			}
+		])) 
 			return [OAuthError::TOKEN_MISSING, []];
-		}
 		// @codeCoverageIgnoreEnd
 
 		# save these two for later actions
@@ -350,20 +307,13 @@ class OAuth10Action extends OAuth10Permission {
 	 * @return array Standard return value of Common::http_client.
 	 */
 	public function request($kwargs) {
-		$logger = self::$logger;
 		if (!isset($kwargs['get']))
 			$kwargs['get'] = [];
 		$kwargs['get']['oauth_token'] = $this->access_token;
 
 		$purl = parse_url($kwargs['url']);
-		if (!Common::check_idict($purl, ['scheme', 'host', 'path'])) {
-			if ($logger) {
-				$msg = sprintf("Missing args: %s", 
-					json_encode($purl));
-				$logger->error("OAuth: request wrapper: $msg");
-			}
+		if (!Common::check_idict($purl, ['scheme', 'host', 'path'])) 
 			return [-1, []];
-		}
 		extract($purl);
 
 		if (isset($query)) {

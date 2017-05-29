@@ -270,7 +270,6 @@ abstract class OAuthStore extends AdminRoute {
 	public function oauth_get_permission_instance(
 		$service_type, $service_name
 	) {
-		$logger = $this->logger;
 		$key = $service_name . '-' . $service_type;
 		if (!isset($this->oauth_service_configs[$key]))
 			# key invalid
@@ -281,13 +280,13 @@ abstract class OAuthStore extends AdminRoute {
 			$perm = new zo\OAuth10Permission(
 				$consumer_key, $consumer_secret,
 				$url_request_token, $url_request_token_auth,
-				$url_access_token, $url_callback, $logger
+				$url_access_token, $url_callback
 			);
 		} else {
 			$perm = new zo\OAuth20Permission(
 				$consumer_key, $consumer_secret,
 				$url_request_token_auth, $url_access_token,
-				$url_callback, $scope, $logger
+				$url_callback, $scope
 			);
 		}
 		if (method_exists($this, 'http_client')) {
