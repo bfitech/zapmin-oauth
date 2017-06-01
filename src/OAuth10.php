@@ -185,12 +185,11 @@ class OAuth10Permission extends OAuthCommon {
 	 *     url_callback that can be handled by site_callback().
 	 */
 	public function get_access_token_url() {
+		$oauth_token = $oauth_verifier = null;
 		$resp = $this->request_token();
 		if (!$resp)
 			return null;
 		extract($resp);
-		if (!isset($oauth_verifier))
-			$oauth_verifier = null;
 		return $this->authenticate_request_token(
 			$oauth_token, $oauth_verifier);
 	}
@@ -215,6 +214,7 @@ class OAuth10Permission extends OAuthCommon {
 	 */
 	public function site_callback($get) {
 
+		$oauth_token = $oauth_verifier = null;
 		if (!Common::check_idict($get, ['oauth_token'])) 
 			return [OAuthError::INCOMPLETE_DATA, []];
 		extract($get);
@@ -230,10 +230,9 @@ class OAuth10Permission extends OAuthCommon {
 		];
 
 		$post_data = [];
-		if (isset($oauth_verifier)) {
+		if ($oauth_verifier)
 			# required by 1.0a
 			$post_data['oauth_verifier'] = $oauth_verifier;
-		}
 
 		$resp = $this->http_client([
 			'url' => $this->url_access_token,
@@ -311,12 +310,13 @@ class OAuth10Action extends OAuth10Permission {
 			$kwargs['get'] = [];
 		$kwargs['get']['oauth_token'] = $this->access_token;
 
+		$scheme = $host = $path = $query = null;
 		$purl = parse_url($kwargs['url']);
 		if (!Common::check_idict($purl, ['scheme', 'host', 'path'])) 
 			return [-1, []];
 		extract($purl);
 
-		if (isset($query)) {
+		if ($query) {
 			parse_str($query, $parsed_get);
 			if ($parsed_get)
 				$kwargs['get'] = array_merge($kwargs['get'],

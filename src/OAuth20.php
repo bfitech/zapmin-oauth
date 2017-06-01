@@ -20,7 +20,7 @@ class OAuth20Permission extends OAuthCommon {
 	/** Access token URL. */
 	private $url_access_token = null;
 	/** Callback URL. */
-	private $url_callback = null;
+	private $callback_uri = null;
 	/** Scope. */
 	private $scope = null;
 
@@ -101,6 +101,7 @@ class OAuth20Permission extends OAuthCommon {
 	public function site_callback($get) {
 		$redirect_uri = $this->callback_uri;
 
+		$code = null;
 		if (!Common::check_idict($get, ['code', 'state'])) 
 			# We only check 'state' existence. We don't actually
 			# match it with previously-generated one in auth page.
@@ -168,8 +169,6 @@ class OAuth20Action extends OAuthCommon {
 	private $access_token = null;
 	private $refresh_token = null;
 
-	private $url_request_token_auth = null;
-
 	/**
 	 * Constructor.
 	 *
@@ -197,7 +196,7 @@ class OAuth20Action extends OAuthCommon {
 		$this->consumer_key = $consumer_key;
 		$this->consumer_secret = $consumer_secret;
 		$this->access_token = $access_token;
-		$this->refresh_token = $access_token;
+		$this->refresh_token = $refresh_token;
 		$this->url_access_token = $url_access_token;
 	}
 	
