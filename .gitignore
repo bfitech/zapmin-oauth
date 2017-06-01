@@ -6,6 +6,9 @@
 *.ini
 *.bak
 *.sq3
+*.orig
+
+.DS_Store
 composer.lock
 
 /docs/
