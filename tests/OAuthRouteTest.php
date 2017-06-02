@@ -358,9 +358,11 @@ class OAuthRouteTest extends TestCase {
 		$adm->route('/oauth/<service_type>/<service_name>/callback',
 			[$adm, 'route_byway_callback']);
 		$this->assertEquals($core::$code, 301);
-		$redir_local = explode(' ', array_filter($core::$head, function($ele){
-			return strpos($ele, 'Location:') === 0;
-		})[0])[1];
+		$redir_local = explode(
+			' ', array_filter($core::$head, function($ele){
+				return strpos($ele, 'Location:') === 0;
+			})[0]
+		)[1];
 		$this->assertEquals($redir_local,
 			$adm->oauth_callback_ok_redirect);
 		$this->core_reinit();

@@ -73,7 +73,9 @@ class OAuth10Test extends TestCase {
 			]);
 		};
 		# register these bogus services
-		foreach (['trakt', 'trello', 'twitter', 'tumblr', 'reddit'] as $srv)
+		foreach ([
+			'trakt', 'trello', 'twitter', 'tumblr', 'reddit',
+		] as $srv)
 			$make_service($srv);
 
 		return $adm;

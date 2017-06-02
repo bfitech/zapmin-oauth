@@ -1,9 +1,7 @@
 <?php
 
-// @todo
-// - Add token refresh button for OAuth2.0 if applicable.
-// - This sample assumes installation in the root path '/'.
-//   Parameterize HTML base to fix this.
+// @todo This sample assumes installation in the root path '/'.
+//     Parameterize HTML base to fix this.
 
 ?><!doctype html>
 <html>
@@ -69,6 +67,10 @@
 				s.isSigningIn = false;
 			});
 		};
+
+		s.refreshToken = function() {
+			console.log("TODO");
+		};
 	});
 })();
 	</script>
@@ -98,6 +100,9 @@
 				<button ng-click='signOut()'>
 					SIGN OUT
 				</button>
+				<button ng-click='refreshToken()'>
+					REFRESH TOKEN
+				</button>
 			</p>
 		</div>
 		<div ng-show=!isIn>
@@ -125,10 +130,10 @@
 					Unknown Service
 				</button>
 			</p>
-			<p ng-show=errMsg>
-				<strong>ERROR:</strong> {{errMsg}}
-			</p>
 		</div>
+		<p ng-show=errMsg>
+			<strong>ERROR:</strong> {{errMsg}}
+		</p>
 	</div>
 </div>
 
