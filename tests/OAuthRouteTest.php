@@ -15,21 +15,25 @@ use BFITech\ZapOAuth\OAuthError;
 
 
 class Router extends RouterDev {
+
 	public static function send_cookie(
 		$name, $value='', $expire=0, $path='', $domain='',
 		$secure=false, $httponly=false
 	) {
 		// do nothing
 	}
+
 }
 
 class OAuthRoutePatched extends OAuthRoute {
+
 	public function oauth_fetch_profile(
 		$oauth_action, $service_type, $service_name, $kwargs=[]
 	) {
 		return ServiceFixture::oauth_fetch_profile(
 			$oauth_action, $service_type, $service_name, $kwargs);
 	}
+
 	public function oauth_finetune_permission($args, $perm) {
 		if ($args['params']['service_name'] == 'reddit') {
 			$perm->auth_basic_for_site_callback = true;
@@ -39,18 +43,23 @@ class OAuthRoutePatched extends OAuthRoute {
 		}
 		return $perm;
 	}
+
 }
 
 class OAuthRoute10Patched extends OAuthRoutePatched {
+
 	public function http_client($kwargs) {
 		return ServiceFixture::oauth10($kwargs);
 	}
+
 }
 
 class OAuthRoute20Patched extends OAuthRoutePatched {
+
 	public function http_client($kwargs) {
 		return ServiceFixture::oauth20($kwargs);
 	}
+
 }
 
 class OAuthRouteTest extends TestCase {
@@ -151,7 +160,7 @@ class OAuthRouteTest extends TestCase {
 	private function get_redir_url($heads) {
 		$location_header = array_filter($heads, function($ele){
 				return strpos($ele, 'Location:') === 0;
-			}
+		}
 		);
 		if (!$location_header)
 			return null;
@@ -377,4 +386,5 @@ class OAuthRouteTest extends TestCase {
 		$this->assertEquals($fname, "John Smith");
 
 	}
+
 }

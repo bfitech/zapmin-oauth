@@ -215,7 +215,7 @@ class OAuth10Permission extends OAuthCommon {
 	public function site_callback($get) {
 
 		$oauth_token = $oauth_verifier = null;
-		if (!Common::check_idict($get, ['oauth_token'])) 
+		if (!Common::check_idict($get, ['oauth_token']))
 			return [OAuthError::INCOMPLETE_DATA, []];
 		extract($get);
 
@@ -242,7 +242,7 @@ class OAuth10Permission extends OAuthCommon {
 			'expect_json' => false,
 		]);
 		// @codeCoverageIgnoreStart
-		if ($resp[0] !== 200) 
+		if ($resp[0] !== 200)
 			return [OAuthError::SERVICE_ERROR, []];
 		// @codeCoverageIgnoreEnd
 
@@ -251,7 +251,7 @@ class OAuth10Permission extends OAuthCommon {
 		if (false === $args = Common::check_idict($args, [
 			'oauth_token',
 			'oauth_token_secret',
-		])) 
+		]))
 			return [OAuthError::TOKEN_MISSING, []];
 		// @codeCoverageIgnoreEnd
 
@@ -261,6 +261,7 @@ class OAuth10Permission extends OAuthCommon {
 			'access_token_secret' => $args['oauth_token_secret'],
 		]];
 	}
+
 }
 
 
@@ -312,7 +313,7 @@ class OAuth10Action extends OAuth10Permission {
 
 		$scheme = $host = $path = $query = null;
 		$purl = parse_url($kwargs['url']);
-		if (!Common::check_idict($purl, ['scheme', 'host', 'path'])) 
+		if (!Common::check_idict($purl, ['scheme', 'host', 'path']))
 			return [-1, []];
 		extract($purl);
 
@@ -337,4 +338,3 @@ class OAuth10Action extends OAuth10Permission {
 	}
 
 }
-

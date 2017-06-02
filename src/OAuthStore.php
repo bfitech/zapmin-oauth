@@ -116,7 +116,8 @@ abstract class OAuthStore extends AdminRoute {
 			$logger->activate();
 			if (!$this->force_create_table)
 				return;
-		} catch (SQLError $e) {}
+		} catch (SQLError $e) {
+		}
 		$logger->activate();
 
 		foreach([
@@ -398,7 +399,6 @@ abstract class OAuthStore extends AdminRoute {
 		return [];
 	}
 
-
 	/**
 	 * Add new user after successful authorization.
 	 *
@@ -480,7 +480,6 @@ abstract class OAuthStore extends AdminRoute {
 		return $session_token;
 	}
 
-
 	/**
 	 * Get OAuth*Action instance from session token.
 	 *
@@ -500,5 +499,5 @@ abstract class OAuthStore extends AdminRoute {
 			$tokens['access_secret'], $tokens['refresh']
 		);
 	}
-}
 
+}

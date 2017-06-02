@@ -14,12 +14,14 @@ use BFITech\ZapOAuth\OAuthError;
 
 
 class OAuth10Store extends OAuthStore {
+
 	public function oauth_fetch_profile(
 		$oauth_action, $service_type, $service_name, $kwargs=[]
 	) {
 		return ServiceFixture::oauth_fetch_profile(
 			$oauth_action, $service_type, $service_name, $kwargs);
 	}
+
 	public function oauth_add_user(
 		$service_type, $service_name, $uname, $access_token,
 		$access_token_secret=null, $refresh_token=null, $profile=[]
@@ -29,6 +31,7 @@ class OAuth10Store extends OAuthStore {
 			$access_token_secret, $refresh_token, $profile
 		);
 	}
+
 }
 
 
@@ -213,5 +216,5 @@ class OAuth10Test extends TestCase {
 		$this->assertEquals($data['uname'], 'john');
 
 	}
-}
 
+}

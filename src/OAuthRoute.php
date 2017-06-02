@@ -160,5 +160,5 @@ class OAuthRoute extends OAuthStore {
 		# or just go home
 		return $core->redirect($core->get_home());
 	}
-}
 
+}

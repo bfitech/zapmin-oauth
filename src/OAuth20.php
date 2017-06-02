@@ -59,8 +59,8 @@ class OAuth20Permission extends OAuthCommon {
 	 */
 	public function get_access_token_url() {
 
-		# redirect_uri must be underneath callback_uri on github, but can
-		# be anything, even multiple on google. Defaults to
+		# redirect_uri must be underneath callback_uri on github, but
+		# can be anything, even multiple on google. Defaults to
 		# $this->callback_uri.
 
 		$url = $this->url_request_token_auth;
@@ -102,7 +102,7 @@ class OAuth20Permission extends OAuthCommon {
 		$redirect_uri = $this->callback_uri;
 
 		$code = null;
-		if (!Common::check_idict($get, ['code', 'state'])) 
+		if (!Common::check_idict($get, ['code', 'state']))
 			# We only check 'state' existence. We don't actually
 			# match it with previously-generated one in auth page.
 			return [OAuthError::INCOMPLETE_DATA, []];
@@ -143,7 +143,7 @@ class OAuth20Permission extends OAuthCommon {
 			'expect_json' => true
 		]);
 		// @codeCoverageIgnoreStart
-		if ($resp[0] !== 200) 
+		if ($resp[0] !== 200)
 			return [OAuthError::SERVICE_ERROR, []];
 		// @codeCoverageIgnoreEnd
 
@@ -151,13 +151,14 @@ class OAuth20Permission extends OAuthCommon {
 		# various additional values, e.g. normalized scope for
 		# Github. We'll only check 'access_token'.
 		// @codeCoverageIgnoreStart
-		if (!Common::check_idict($resp[1], ['access_token'])) 
+		if (!Common::check_idict($resp[1], ['access_token']))
 			return [OAuthError::TOKEN_MISSING, []];
 		// @codeCoverageIgnoreEnd
 
 		# Store 'access_token' for later API calls.
 		return [0, $resp[1]];
 	}
+
 }
 
 
@@ -178,7 +179,7 @@ class OAuth20Action extends OAuthCommon {
 	 * doesn't need to.
 	 *
 	 * @param string $consumer_key Consumer key.
-	 * @param string $consumer_secret Consumer secret. 
+	 * @param string $consumer_secret Consumer secret.
 	 * @param string $access_token User access token returned by
 	 *     OAuth20Permission::site_callback or retrieved from some
 	 *     storage.
@@ -199,14 +200,14 @@ class OAuth20Action extends OAuthCommon {
 		$this->refresh_token = $refresh_token;
 		$this->url_access_token = $url_access_token;
 	}
-	
+
 	/**
 	 * Generic authorized request wrapper.
 	 *
 	 * This lets a caller to do whatever it wants with a service,
 	 * according to respective service API.
 	 *
-	 * @param array $kwargs http_client kwarg parameters. 
+	 * @param array $kwargs http_client kwarg parameters.
 	 * @param bool $bearer If true, "Authorization: Bearer TOKEN"
 	 *     request header is sent. Some services allow TOKEN sent via
 	 *     GET.
@@ -263,5 +264,5 @@ class OAuth20Action extends OAuthCommon {
 			'expect_json' => $expect_json,
 		]);
 	}
-}
 
+}

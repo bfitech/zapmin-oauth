@@ -76,7 +76,8 @@ class ServiceFixture {
 				# response is redirect URL to callback uri
 				if ($service == 'twitter')
 					## pass twitter
-					return [200, 'http://localhost/?' . http_build_query([
+					return [200, 'http://localhost/?' .
+					http_build_query([
 						'oauth_token' => 'token-' . mt_rand(),
 						'oauth_verifier' => 'token-verifier',
 					])];
@@ -145,7 +146,7 @@ class ServiceFixture {
 					## fail linkedin
 					return [200, json_encode(['oops' => 'linkedin'])];
 				if ($service == 'reddit')
-					## pass reddit 
+					## pass reddit
 					return [200, json_encode(self::send_profile())];
 				## not found for anything else
 				return [404, json_encode([])];
@@ -181,4 +182,3 @@ class ServiceFixture {
 	}
 
 }
-

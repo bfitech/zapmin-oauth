@@ -49,5 +49,5 @@ class OAuthCommon {
 		return Common::http_client($args);
 		// @codeCoverageIgnoreEnd
 	}
-}
 
+}

@@ -24,4 +24,3 @@ class OAuthError extends \Exception {
 	/** Token missing from parsed URL. */
 	const TOKEN_MISSING = 0x0104;
 }
-
