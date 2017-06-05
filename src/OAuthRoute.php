@@ -108,6 +108,8 @@ class OAuthRoute extends OAuthStore {
 				'ZapOAuth: access token not obtained from callback.');
 			return $this->_route_byway_failed();
 		}
+		$logger->info(
+				'ZapOAuth: Callback response: ' . json_encode($ret[1]));
 		extract($ret[1]);
 
 		# save obtained tokens to properties

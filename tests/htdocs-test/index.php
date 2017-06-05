@@ -51,6 +51,19 @@ class OAuthRouteHTTP extends OAuthRoute {
 		return $profile;
 	}
 
+	public function oauth_finetune_permission($args, $perm) {
+		# to obtain google refresh token, we needs to provide
+		# `access_type=offline&prompt=consent`
+		# see: http://archive.fo/L3bXg#selection-1259.0-1279.18
+		if ($args['params']['service_name'] == 'google') {
+			$perm->access_token_url_extra_params = [
+				'access_type' => 'offline',
+				'prompt' => 'consent',
+			];
+		}
+		return $perm;
+	}
+
 	private function fetch_profile_github($oauth_action) {
 		# github needs UA
 		$headers = ['User-Agent: curl/7.47.0'];
@@ -158,6 +171,22 @@ class OAuthRouteHTTP extends OAuthRoute {
 		return $core::pj([0, []]);
 	}
 
+	public function route_refresh($args=null) {
+		$core = $this->core;
+		$udata = $this->adm_status();
+		if (!$udata)
+			return $core::pj([1, []], 403);
+		$token = $udata['token'];
+		$act = $this->oauth_get_action_from_session($token);
+		$refresh_token = $act->refresh();
+
+		// @todo: after refresh token?
+
+		if (!$refresh_token)
+			return $core::pj([1, []], 403);
+		return $core::pj([0, $refresh_token]);
+	}
+
 }
 
 $logger = new Logger(Logger::DEBUG, __DIR__ . '/zapmin-oauth.log');
@@ -184,6 +213,7 @@ $adm->route('/', function($args) use($adm) {
 	die();
 });
 $adm->route('/status', [$adm, 'route_status'], 'GET');
+$adm->route('/refresh', [$adm, 'route_refresh'], 'POST');
 $adm->route('/logout', [$adm, 'route_logout'], ['GET', 'POST']);
 $adm->route('/byway/oauth/<service_type>/<service_name>/auth',
 	[$adm, 'route_byway_auth'], 'POST');

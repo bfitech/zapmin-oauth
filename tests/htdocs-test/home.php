@@ -17,6 +17,7 @@
 		var s = $scope;
 
 		s.isIn = false;
+		s.isRefresh = false;
 
 		s.getStatus = function() {
 			$http.get('/status')
@@ -24,6 +25,9 @@
 				s.isIn = true;
 				s.uid = ret.data.data.uid;
 				s.uname = ret.data.data.uname;
+				var service = ret.data.data.uname.match(/\[(.*?)\]/);
+				if(service[1] == 'google')
+					s.isRefresh = true;
 			}, function(){
 				s.isIn = false;
 				s.uid = null;
@@ -69,7 +73,13 @@
 		};
 
 		s.refreshToken = function() {
-			console.log("TODO");
+			$http.post('/refresh')
+			.then(function(ret){
+				console.log(ret.data);
+				s.isIn = true;
+			}, function(){
+				s.isIn = false;
+			});
 		};
 	});
 })();
@@ -100,7 +110,7 @@
 				<button ng-click='signOut()'>
 					SIGN OUT
 				</button>
-				<button ng-click='refreshToken()'>
+				<button ng-click='refreshToken()' ng-show=isRefresh>
 					REFRESH TOKEN
 				</button>
 			</p>
