@@ -187,6 +187,11 @@ class OAuthRouteHTTP extends OAuthRoute {
 		return $core::pj([0, $refresh_token]);
 	}
 
+	public function route_static($args) {
+		return $this->core->static_file(
+			__DIR__ . '/static/' . $args['params']['path']);
+	}
+
 }
 
 $logger = new Logger(Logger::DEBUG, __DIR__ . '/zapmin-oauth.log');
@@ -219,3 +224,4 @@ $adm->route('/byway/oauth/<service_type>/<service_name>/auth',
 	[$adm, 'route_byway_auth'], 'POST');
 $adm->route('/byway/oauth/<service_type>/<service_name>/callback',
 	[$adm, 'route_byway_callback'], 'GET');
+$adm->route('/static/{path}', [$adm, 'route_static']);

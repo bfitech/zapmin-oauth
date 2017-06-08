@@ -12,7 +12,7 @@
 composer.lock
 
 /docs/
-/tests/htdocs-test/bower_components/
+/tests/htdocs-test/static/
 /tests/htdocs-test/config.json
 /vendor/
 

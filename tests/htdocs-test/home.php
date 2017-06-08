@@ -1,14 +1,14 @@
 <?php
 
-// @todo This sample assumes installation in the root path '/'.
-//     Parameterize HTML base to fix this.
+// @note This demo assumes running on top-level path. Change base URL
+//     if you want to run it in sub-path.
 
 ?><!doctype html>
 <html>
 <head>
 	<base href=/>
 	<title>Test OAuth Client</title>
-	<script src=./bower_components/angular/angular.min.js></script>
+	<script src=./static/angular/angular.min.js></script>
 	<script>
 (function(){
 	"use strict";
@@ -17,17 +17,15 @@
 		var s = $scope;
 
 		s.isIn = false;
-		s.isRefresh = false;
+		s.canRefresh = false;
 
 		s.getStatus = function() {
-			$http.get('/status')
+			$http.get('./status')
 			.then(function(ret){
 				s.isIn = true;
 				s.uid = ret.data.data.uid;
 				s.uname = ret.data.data.uname;
-				var service = ret.data.data.uname.match(/\[(.*?)\]/);
-				if(service[1] == 'google')
-					s.isRefresh = true;
+				s.canRefresh = s.uname.indexOf('google') != -1;
 			}, function(){
 				s.isIn = false;
 				s.uid = null;
@@ -49,10 +47,10 @@
 
 		s.signIn = function(key) {
 			var authUrls = {
-				twitter: '/byway/oauth/10/twitter/auth',
-				github:  '/byway/oauth/20/github/auth',
-				google:  '/byway/oauth/20/google/auth',
-				unknown: '/byway/oauth/30/unknown/auth',
+				twitter: './byway/oauth/10/twitter/auth',
+				github:  './byway/oauth/20/github/auth',
+				google:  './byway/oauth/20/google/auth',
+				unknown: './byway/oauth/30/unknown/auth',
 			};
 			var authUrl = !authUrls[key]
 				? authUrls.unknown : authUrls[key];
@@ -73,7 +71,7 @@
 		};
 
 		s.refreshToken = function() {
-			$http.post('/refresh')
+			$http.post('./refresh')
 			.then(function(ret){
 				console.log(ret.data);
 				s.isIn = true;
@@ -110,7 +108,8 @@
 				<button ng-click='signOut()'>
 					SIGN OUT
 				</button>
-				<button ng-click='refreshToken()' ng-show=isRefresh>
+				<button ng-click='refreshToken()'
+					ng-show=canRefresh>
 					REFRESH TOKEN
 				</button>
 			</p>
@@ -146,4 +145,3 @@
 		</p>
 	</div>
 </div>
-
