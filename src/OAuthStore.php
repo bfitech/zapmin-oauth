@@ -34,6 +34,10 @@ use BFITech\ZapOAuth as zo;
  *    previously-obtained refresh token.
  *
  * @see AdminStore.
+ *
+ * @manonly
+ * @SuppressWarnings(PHPMD.LongVariable)
+ * @endmanonly
  */
 abstract class OAuthStore extends AdminRoute {
 
@@ -320,6 +324,10 @@ abstract class OAuthStore extends AdminRoute {
 	 *     }
 	 * }
 	 * @endcode
+	 *
+	 * @manonly
+	 * @SuppressWarnings(PHPMD.UnusedFormalParameter)
+	 * @endmanonly
 	 */
 	public function oauth_finetune_permission($args, $oauth_perm) {
 		return $oauth_perm;
@@ -392,6 +400,10 @@ abstract class OAuthStore extends AdminRoute {
 	 *     }
 	 *     @endcode
 	 * @codeCoverageIgnore
+	 *
+	 * @manonly
+	 * @SuppressWarnings(PHPMD.UnusedFormalParameter)
+	 * @endmanonly
 	 */
 	public function oauth_fetch_profile(
 		$oauth_action, $service_type, $service_name, $kwargs=[]

@@ -7,12 +7,15 @@
 *.bak
 *.sq3
 *.orig
+*.json
 
 .DS_Store
 composer.lock
+phpcs.xml
+phpmd.xml
 
 /docs/
 /tests/htdocs-test/static/
-/tests/htdocs-test/config.json
+/tests/testdata/
 /vendor/
 

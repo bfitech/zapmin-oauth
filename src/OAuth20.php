@@ -7,6 +7,10 @@ use BFITech\ZapCore\Logger;
 
 /**
  * OAuth2.0 class.
+ *
+ * @manonly
+ * @SuppressWarnings(PHPMD.LongVariable)
+ * @endmanonly
  */
 class OAuth20Permission extends OAuthCommon {
 
