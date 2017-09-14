@@ -10,8 +10,9 @@
     }
   ],
   "require": {
-    "bfitech/zapmin": "~1.4.0"
+    "bfitech/zapmin": "1.4.x-dev"
   },
+  "minimum-stability": "stable",
   "require-dev": {
     "phpunit/phpunit": "4.8.*"
   },
