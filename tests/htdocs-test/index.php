@@ -4,6 +4,7 @@
 require(__DIR__ . '/../../vendor/autoload.php');
 
 
+use BFITech\ZapCoreDev\CoreDev;
 use BFITech\ZapCore\Logger;
 use BFITech\ZapCore\Router;
 use BFITech\ZapStore\SQLite3;
@@ -194,17 +195,27 @@ class OAuthRouteHTTP extends OAuthRoute {
 
 }
 
-$logger = new Logger(Logger::DEBUG, __DIR__ . '/zapmin-oauth.log');
+$testdir = CoreDev::testdir(__DIR__);
+$logger = new Logger(Logger::DEBUG, $testdir . '/zapmin-oauth.log');
 $core = (new Router)->config('logger', $logger);
-$store = new SQLite3(['dbname' => __DIR__ . '/zapmin-oauth.sq3'],
+$store = new SQLite3(['dbname' => $testdir . '/zapmin-oauth.sq3'],
 	$logger);
 $adm = new OAuthRouteHTTP($store, $logger, null, $core);
 
 # Make sure server config exists. Use sample for a quick start.
 
-$configfile = __DIR__ . '/config.json';
-if (!is_file($configfile))
-	die("Config not found.");
+$configfile = $testdir . '/config.json';
+if (!is_file($configfile)) {
+	copy(__DIR__ . '/config.json-sample', $configfile);
+	echo "<pre>";
+	printf(
+		"ERROR: Config not found.\n" .
+		"       Default is copied to '%s'.\n" .
+		"       Edit it to reflect your testing OAuth accounts.\n",
+		$configfile);
+	echo "<pre>";
+	die();
+}
 $config = json_decode(file_get_contents($configfile));
 
 # NOTE: Make sure callback URLs in the configuration and on
