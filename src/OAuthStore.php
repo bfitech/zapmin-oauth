@@ -439,7 +439,7 @@ abstract class OAuthStore extends AdminRoute {
 		# build passwordless account using obtained uname with uservice
 		# having the form 'oauth%service_type%[%service_name%]
 
-		$args = array();
+		$args = [];
 		$uname = rawurlencode($uname);
 		$uservice = sprintf(
 			'oauth%s[%s]', $service_type, $service_name);
