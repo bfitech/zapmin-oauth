@@ -4,7 +4,7 @@
 require(__DIR__ . '/../../vendor/autoload.php');
 
 
-use BFITech\ZapCoreDev\CoreDev;
+use BFITech\ZapCommonDev\CommonDev;
 use BFITech\ZapCore\Logger;
 use BFITech\ZapCore\Router;
 use BFITech\ZapStore\SQLite3;
@@ -195,7 +195,7 @@ class OAuthRouteHTTP extends OAuthRoute {
 
 }
 
-$testdir = CoreDev::testdir(__DIR__);
+$testdir = CommonDev::testdir(__DIR__);
 $logger = new Logger(Logger::DEBUG, $testdir . '/zapmin-oauth.log');
 $core = (new Router)->config('logger', $logger);
 $store = new SQLite3(['dbname' => $testdir . '/zapmin-oauth.sq3'],
