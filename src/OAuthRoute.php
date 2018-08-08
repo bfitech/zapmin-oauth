@@ -121,9 +121,11 @@ class OAuthRoute extends OAuthStore {
 			# OAuth2.0 only
 			$refresh_token = null;
 
+		// @codeCoverageIgnoreStart
 		$act = $this->oauth_get_action_instance(
 			$service_type, $service_name, $access_token,
 			$access_token_secret, $refresh_token);
+		// @codeCoverageIgnoreEnd
 
 		# fetch profile, specific to each service
 
@@ -138,11 +140,13 @@ class OAuthRoute extends OAuthStore {
 				json_encode($profile)));
 		$uname = $profile['uname'];
 
+		// @codeCoverageIgnoreStart
 		$session_token = $this->oauth_add_user(
 			$service_type, $service_name,
 			$uname, $access_token, $access_token_secret,
 			$refresh_token, $profile
 		);
+		// @codeCoverageIgnoreEnd
 		$expiration = $this->store->time() +
 			$this->adm_get_byway_expiration();
 

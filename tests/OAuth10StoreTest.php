@@ -103,6 +103,7 @@ class OAuth10Test extends TestCase {
 		$perm->http_client_custom = function($args) {
 			return ServiceFixture::oauth10($args);
 		};
+
 		# -> LOCAL -> REMOTE
 		# get auth url, this will internally make request to
 		# POST: /10/auth_request from local and process response such

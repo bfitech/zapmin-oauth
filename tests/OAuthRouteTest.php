@@ -7,9 +7,9 @@ require_once(__DIR__ . '/OAuthFixture.php');
 use PHPUnit\Framework\TestCase;
 use BFITech\ZapCore\Logger;
 use BFITech\ZapCoreDev\RouterDev;
+use BFITech\ZapCoreDev\RoutingDev;
 use BFITech\ZapStore\SQLite3;
 use BFITech\ZapStore\SQLError;
-use BFITech\ZapAdmin\AdminRoute;
 use BFITech\ZapAdmin\OAuthRoute;
 use BFITech\ZapOAuth\OAuthError;
 
@@ -99,11 +99,6 @@ class OAuthRouteTest extends TestCase {
 		return $adm;
 	}
 
-	private function core_reinit() {
-		self::$core->deinit()->reset();
-		self::$core->config('home', '/');
-	}
-
 	private function create_route_20() {
 		$adm = new OAuthRoute20Patched(self::$store, self::$logger,
 			null, self::$core);
@@ -159,7 +154,7 @@ class OAuthRouteTest extends TestCase {
 
 	private function get_redir_url($heads) {
 		$location_header = array_filter($heads, function($ele){
-				return strpos($ele, 'Location:') === 0;
+			return strpos($ele, 'Location:') === 0;
 		}
 		);
 		if (!$location_header)
@@ -173,51 +168,47 @@ class OAuthRouteTest extends TestCase {
 		$adm->oauth_callback_fail_redirect = 'http://localhost/fail';
 		$adm->oauth_callback_ok_redirect = null;
 		$core = $adm->core;
+		$rdev = new RoutingDev($core);
 
 		# invalid params
-		$_SERVER['REQUEST_URI'] = '/';
+		$rdev->request('/');
 		$adm->route('/', [$adm, 'route_byway_auth']);
 		$this->assertEquals($core::$code, 404);
 		$this->assertEquals($core::$body['errno'],
 			OAuthError::INCOMPLETE_DATA);
-		$this->core_reinit();
 
 		# wrong route callback application
-		$_SERVER['REQUEST_URI'] = '/oauth/wrong/url';
+		$rdev->request('/oauth/wrong/url');
 		$adm->route('/oauth/wrong/url',
 			[$adm, 'route_byway_auth']);
 		$this->assertEquals($core::$code, 404);
 		$this->assertEquals($core::$body['errno'],
 			OAuthError::INCOMPLETE_DATA);
-		$this->core_reinit();
 
 		# unregistered service
-		$_SERVER['REQUEST_URI'] = '/oauth/10/vk/auth';
+		$rdev->request('/oauth/10/vk/auth');
 		$adm->route('/oauth/<service_type>/<service_name>/auth',
 			[$adm, 'route_byway_auth']);
 		$this->assertEquals($core::$code, 404);
 		$this->assertEquals($core::$body['errno'],
 			OAuthError::SERVICE_UNKNOWN);
-		$this->core_reinit();
 
 		# server/network error, see fixture
-		$_SERVER['REQUEST_URI'] = '/oauth/10/tumblr/auth';
+		$rdev->request('/oauth/10/tumblr/auth');
 		$adm->route('/oauth/<service_type>/<service_name>/auth',
 			[$adm, 'route_byway_auth']);
 		$this->assertEquals($core::$code, 503);
 		$this->assertEquals($core::$body['errno'],
 			OAuthError::ACCESS_URL_MISSING);
-		$this->core_reinit();
 
 		# access token success
-		$_SERVER['REQUEST_URI'] = '/oauth/10/twitter/auth';
+		$rdev->request('/oauth/10/twitter/auth');
 		$adm->route('/oauth/<service_type>/<service_name>/auth',
 			[$adm, 'route_byway_auth']);
 		$this->assertEquals($core::$code, 200);
 		$auth_url = $core::$body['data'];
 		$this->assertEquals(0,
 			strpos($auth_url, 'http://example.org/10/auth'));
-		$this->core_reinit();
 
 		# open access token URL
 		$access = $adm->http_client([
@@ -231,8 +222,8 @@ class OAuthRouteTest extends TestCase {
 		parse_str(parse_url($redir)['query'], $received_qs);
 
 		# failed authentication due to wrong query string
-		$_SERVER['REQUEST_URI'] = '/oauth/10/twitter/callback';
-		$_GET = ['wrong' => 'data'];
+		$rdev->request('/oauth/10/twitter/callback', 'GET',
+			['get' => ['wrong' => 'data']]);
 		$adm->route('/oauth/<service_type>/<service_name>/callback',
 			[$adm, 'route_byway_callback']);
 		# redirect to fail callback
@@ -240,11 +231,10 @@ class OAuthRouteTest extends TestCase {
 		$this->assertEquals(
 			$this->get_redir_url($core::$head),
 			$adm->oauth_callback_fail_redirect);
-		$this->core_reinit();
 
 		# failed authentication due to wrong service
-		$_SERVER['REQUEST_URI'] = '/oauth/10/tumblr/callback';
-		$_GET = $received_qs;
+		$rdev->request('/oauth/10/tumblr/callback', 'GET',
+			['get' => $received_qs]);
 		$adm->route('/oauth/<service_type>/<service_name>/callback',
 			[$adm, 'route_byway_callback']);
 		# redirect to fail callback
@@ -252,11 +242,10 @@ class OAuthRouteTest extends TestCase {
 		$this->assertEquals(
 			$this->get_redir_url($core::$head),
 			$adm->oauth_callback_fail_redirect);
-		$this->core_reinit();
 
 		# successful authentication
-		$_SERVER['REQUEST_URI'] = '/oauth/10/twitter/callback';
-		$_GET = $received_qs;
+		$rdev->request('/oauth/10/twitter/callback', 'GET',
+			['get' => $received_qs]);
 		$adm->route('/oauth/<service_type>/<service_name>/callback',
 			[$adm, 'route_byway_callback']);
 		# redirect to ok callback
@@ -264,7 +253,6 @@ class OAuthRouteTest extends TestCase {
 		$this->assertEquals(
 			$this->get_redir_url($core::$head),
 			$adm->core->get_home());
-		$this->core_reinit();
 
 		# token is sent via cookie only, which is not available in
 		# the test; let's pull it from database
@@ -295,31 +283,29 @@ class OAuthRouteTest extends TestCase {
 		#$adm->oauth_callback_fail_redirect = 'http://localhost/fail';
 		$adm->oauth_callback_ok_redirect = 'http://localhost/ok';
 		$core = $adm->core;
+		$rdev = new RoutingDev($core);
 
 		# invalid params
-		$_SERVER['REQUEST_URI'] = '/';
+		$rdev->request('/');
 		$adm->route('/', [$adm, 'route_byway_auth']);
 		$this->assertEquals($core::$code, 404);
-		$this->core_reinit();
 
 		# unregistered service
-		$_SERVER['REQUEST_URI'] = '/oauth/20/instagram/auth';
+		$rdev->request('/oauth/20/instagram/auth');
 		$adm->route('/oauth/<service_type>/<service_name>/auth',
 			[$adm, 'route_byway_auth']);
 		$this->assertEquals($core::$code, 404);
 		$this->assertEquals($core::$body['errno'],
 			OAuthError::SERVICE_UNKNOWN);
-		$this->core_reinit();
 
 		# success
-		$_SERVER['REQUEST_URI'] = '/oauth/20/reddit/auth';
+		$rdev->request('/oauth/20/reddit/auth');
 		$adm->route('/oauth/<service_type>/<service_name>/auth',
 			[$adm, 'route_byway_auth']);
 		$this->assertEquals($core::$code, 200);
 		$auth_url = $core::$body['data'];
 		$this->assertSame(0,
 			strpos($auth_url, 'http://reddit.example.org/20/auth'));
-		$this->core_reinit();
 
 		$access = $adm->http_client([
 			'method' => 'GET',
@@ -332,29 +318,26 @@ class OAuthRouteTest extends TestCase {
 		parse_str(parse_url($redir)['query'], $received_qs);
 
 		# wrong route callback application
-		$_SERVER['REQUEST_URI'] = '/oauth/wrong/url';
+		$rdev->request('/oauth/wrong/url');
 		$adm->route('/oauth/wrong/url',
 			[$adm, 'route_byway_callback']);
 		$this->assertEquals($core::$code, 404);
-		$this->core_reinit();
 
 		# visiting invalid site callback
-		$_SERVER['REQUEST_URI'] = '/oauth/20/google/callback';
+		$rdev->request('/oauth/20/google/callback');
 		$adm->route('/oauth/<service_type>/<service_name>/callback',
 			[$adm, 'route_byway_callback']);
 		$this->assertEquals($core::$code, 404);
-		$this->core_reinit();
 
 		# failed authentication without redirect, shows abort(503)
-		$_SERVER['REQUEST_URI'] = '/oauth/20/reddit/callback';
-		$_GET = ['wrong' => 'data'];
+		$rdev->request('/oauth/20/reddit/callback', 'GET', [
+			'get' => ['wrong' => 'data']]);
 		$adm->route('/oauth/<service_type>/<service_name>/callback',
 			[$adm, 'route_byway_callback']);
 		$this->assertEquals($core::$code, 503);
-		$this->core_reinit();
 
-		$_GET = $received_qs;
-		$_SERVER['REQUEST_URI'] = '/oauth/20/reddit/callback';
+		$rdev->request('/oauth/20/reddit/callback', 'GET', [
+			'get' => $received_qs]);
 		$adm->route('/oauth/<service_type>/<service_name>/callback',
 			[$adm, 'route_byway_callback']);
 		$this->assertEquals($core::$code, 301);
@@ -365,7 +348,6 @@ class OAuthRouteTest extends TestCase {
 		)[1];
 		$this->assertEquals($redir_local,
 			$adm->oauth_callback_ok_redirect);
-		$this->core_reinit();
 
 		# token is sent via cookie only, which is not available in
 		# the test; let's pull it from database

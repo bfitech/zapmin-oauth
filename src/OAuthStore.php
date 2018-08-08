@@ -284,6 +284,7 @@ abstract class OAuthStore extends AdminRoute {
 
 		$conf = $this->oauth_service_configs[$key];
 		extract($conf);
+		// @codeCoverageIgnoreStart
 		$perm = $service_type == '10' ?
 			new zo\OAuth10Permission(
 				$consumer_key, $consumer_secret,
@@ -295,6 +296,7 @@ abstract class OAuthStore extends AdminRoute {
 				$url_request_token_auth, $url_access_token,
 				$url_callback, $scope
 			);
+		// @codeCoverageIgnoreEnd
 		if (method_exists($this, 'http_client')) {
 			$perm->http_client_custom = function($kwargs) {
 				return $this->http_client($kwargs);
@@ -361,6 +363,7 @@ abstract class OAuthStore extends AdminRoute {
 			return null;
 		$conf = $this->oauth_service_configs[$key];
 		extract($conf);
+		// @codeCoverageIgnoreStart
 		$act = $service_type == '10' ?
 			new zo\OAuth10Action(
 				$conf['consumer_key'], $conf['consumer_secret'],
@@ -371,6 +374,7 @@ abstract class OAuthStore extends AdminRoute {
 				$access_token, $refresh_token,
 				$conf['url_access_token']
 			);
+		// @codeCoverageIgnoreEnd
 		if (method_exists($this, 'http_client')) {
 			$act->http_client_custom = function($kwargs) {
 				return $this->http_client($kwargs);
