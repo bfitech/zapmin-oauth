@@ -93,7 +93,7 @@ class OAuthRouteDev extends OAuthRoute {
 	 * Fake status.
 	 */
 	public function route_fake_status($args=[]) {
-		return $this->core::pj($this->adm_get_safe_user_data());
+		return $this->core->pj($this->adm_get_safe_user_data());
 	}
 
 }
