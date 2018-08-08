@@ -10,8 +10,6 @@
 	convertNoticesToExceptions="true"
 	convertWarningsToExceptions="true"
 	forceCoversAnnotation="false"
-	mapTestClassNameToCoveredClassName="false"
-	printerClass="PHPUnit_TextUI_ResultPrinter"
 
 	processIsolation="false"
 	stopOnError="false"
@@ -36,6 +34,7 @@
 	<filter>
 		<whitelist processUncoveredFilesFromWhitelist="true">
 			<directory suffix=".php">./src</directory>
+			<directory suffix=".php">./dev</directory>
 		</whitelist>
 	</filter>
 	<logging>

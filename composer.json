@@ -10,7 +10,8 @@
     }
   ],
   "require": {
-    "bfitech/zapmin": "~1.4.1"
+    "php": ">=5.5 <7.2",
+    "bfitech/zapmin": "~1.4.2"
   },
   "require-dev": {
     "phpunit/phpunit": "4.8.*"
@@ -27,7 +28,9 @@
   },
   "autoload-dev": {
     "psr-4": {
-      "BFITech\\ZapCoreDev\\": "vendor/bfitech/zapcore/dev"
+      "BFITech\\ZapCommonDev\\": "vendor/bfitech/zapcore/dev",
+      "BFITech\\ZapCoreDev\\": "vendor/bfitech/zapcore/dev",
+      "BFITech\\ZapAdminDev\\": "dev"
     }
   },
   "extra": {
