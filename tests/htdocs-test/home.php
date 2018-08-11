@@ -91,7 +91,7 @@
 		font-family:monospace;
 	}
 	#box{
-		height:14em;
+		height:18em;
 		padding:8px 16px;
 		border:1px solid rgba(0,0,0,.3);
 		width:400px;

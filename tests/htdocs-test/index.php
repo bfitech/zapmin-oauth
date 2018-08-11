@@ -155,6 +155,11 @@ class OAuthRouteHTTP extends OAuthRoute {
 		return [];
 	}
 
+	public function route_home($args=null) {
+		require('home.php');
+		$this->core::halt();
+	}
+
 	public function route_status($args) {
 		$core = $this->core;
 		$udata = $this->adm_status();
@@ -195,44 +200,69 @@ class OAuthRouteHTTP extends OAuthRoute {
 
 }
 
-$testdir = CommonDev::testdir(__DIR__);
-$logger = new Logger(Logger::DEBUG, $testdir . '/zapmin-oauth.log');
-$core = (new Router)->config('logger', $logger);
-$store = new SQLite3(['dbname' => $testdir . '/zapmin-oauth.sq3'],
-	$logger);
-$adm = new OAuthRouteHTTP($store, $logger, null, $core);
 
-# Make sure server config exists. Use sample for a quick start.
+class Web {
 
-$configfile = $testdir . '/config.json';
-if (!is_file($configfile)) {
-	copy(__DIR__ . '/config.json-sample', $configfile);
-	echo "<pre>";
-	printf(
-		"ERROR: Config not found.\n" .
-		"       Default is copied to '%s'.\n" .
-		"       Edit it to reflect your testing OAuth accounts.\n",
-		$configfile);
-	echo "<pre>";
-	die();
+	public function __construct() {
+		$adm = $this->prepare();
+
+		foreach([
+			['/', 'route_home'],
+			['/status', 'route_status'],
+			['/refresh', 'route_refresh', 'POST'],
+			['/logout', 'route_logout', ['GET', 'POST']],
+			['/byway/oauth/<service_type>/<service_name>/auth',
+				'route_byway_auth', 'POST'],
+			['/byway/oauth/<service_type>/<service_name>/callback',
+				'route_byway_callback'],
+			['/static/{path}', 'route_static']
+		] as $route) {
+			if (count($route) < 3)
+				$route[] = 'GET';
+			if (count($route) < 4)
+				$route[] = false;
+			$adm->route($route[0], [$adm, $route[1]],
+				$route[2], $route[3]);
+		}
+	}
+
+	private function prepare() {
+		# environment
+
+		$testdir = CommonDev::testdir(__DIR__);
+		$logger = new Logger(
+			Logger::DEBUG, $testdir . '/zapmin-oauth.log');
+		$core = (new Router)->config('logger', $logger);
+		$store = new SQLite3(
+			['dbname' => $testdir . '/zapmin-oauth.sq3'], $logger);
+		$adm = new OAuthRouteHTTP($store, $logger, null, $core);
+
+		# config
+
+		$configfile = $testdir . '/config.json';
+		if (!is_file($configfile)) {
+			copy(__DIR__ . '/config.json-sample', $configfile);
+			echo "<pre>";
+			printf(
+				"ERROR: Config not found.\n" .
+				"       Default is copied to '%s'.\n" .
+				"       Edit it to reflect your testing OAuth accounts.\n",
+				$configfile);
+			echo "<pre>";
+			die();
+		}
+		$config = json_decode(file_get_contents($configfile));
+
+		# add service
+
+		# Make sure callback URLs in the configuration and on
+		# remote server match.
+		foreach ($config as $cfg)
+			call_user_func_array([$adm, 'oauth_add_service'], $cfg);
+
+		return $adm;
+	}
 }
-$config = json_decode(file_get_contents($configfile));
 
-# NOTE: Make sure callback URLs in the configuration and on
-# remote server match.
+new Web;
 
-foreach ($config as $cfg)
-	call_user_func_array([$adm, 'oauth_add_service'], $cfg);
-
-$adm->route('/', function($args) use($adm) {
-	require('home.php');
-	die();
-});
-$adm->route('/status', [$adm, 'route_status'], 'GET');
-$adm->route('/refresh', [$adm, 'route_refresh'], 'POST');
-$adm->route('/logout', [$adm, 'route_logout'], ['GET', 'POST']);
-$adm->route('/byway/oauth/<service_type>/<service_name>/auth',
-	[$adm, 'route_byway_auth'], 'POST');
-$adm->route('/byway/oauth/<service_type>/<service_name>/callback',
-	[$adm, 'route_byway_callback'], 'GET');
-$adm->route('/static/{path}', [$adm, 'route_static']);
