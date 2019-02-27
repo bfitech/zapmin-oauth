@@ -18,7 +18,8 @@ class OAuthRouteHTTP extends OAuthRoute {
 		$fields = 'id,displayName,emails,url';
 		$resp = $oauth_action->request([
 			'method' => 'GET',
-			'url' => 'https://www.googleapis.com/plus/v1/people/me',
+			'url' => 'https://www.googleapis.com/userinfo/v2/me' .
+				'?fields=email%2Cid%2Clink%2Cname',
 			'get' => [
 				'fields' => $fields,
 			],
@@ -34,17 +35,10 @@ class OAuthRouteHTTP extends OAuthRoute {
 			return [];
 
 		# additional data
-		if (isset($data['emails']) && is_array($data['emails'])) {
-			foreach ($data['emails'] as $email) {
-				if (!isset($email['value']))
-					continue;
-				$profile['email'] = $email['value'];
-				break;
-			}
-		}
 		foreach([
-			'displayName' => 'fname',
-			'url' => 'site',
+			'email' => 'email',
+			'name' => 'fname',
+			'link' => 'site',
 		] as $oauth_key => $zap_key) {
 			if (isset($data[$oauth_key]) && $data[$oauth_key])
 				$profile[$zap_key] = $data[$oauth_key];
