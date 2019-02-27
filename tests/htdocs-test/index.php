@@ -15,11 +15,10 @@ class OAuthRouteHTTP extends OAuthRoute {
 
 	private function fetch_profile_google($oauth_action) {
 		# make request
-		$fields = 'id,displayName,emails,url';
+		$fields = 'email,id,link,name';
 		$resp = $oauth_action->request([
 			'method' => 'GET',
-			'url' => 'https://www.googleapis.com/userinfo/v2/me' .
-				'?fields=email%2Cid%2Clink%2Cname',
+			'url' => 'https://www.googleapis.com/userinfo/v2/me',
 			'get' => [
 				'fields' => $fields,
 			],
@@ -30,9 +29,9 @@ class OAuthRouteHTTP extends OAuthRoute {
 		$data = $resp[1];
 
 		# uname must exists
-		$profile = ['uname' => $data['id']];
 		if (!isset($data['id']))
 			return [];
+		$profile = ['uname' => $data['id']];
 
 		# additional data
 		foreach([
