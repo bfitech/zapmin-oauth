@@ -10,21 +10,24 @@ use BFITech\ZapCore\Logger;
 use BFITech\ZapStore\SQLite3;
 use BFITech\ZapAdmin\AdminStore;
 use BFITech\ZapAdmin\OAuthStore;
+use BFITech\ZapOAuth\OAuthCommon;
 use BFITech\ZapOAuth\OAuthError;
 
 
 class OAuth10Store extends OAuthStore {
 
 	public function oauth_fetch_profile(
-		$oauth_action, $service_type, $service_name, $kwargs=[]
+		OAuthCommon $oauth_action,
+		string $service_type, string $service_name, array $kwargs=[]
 	) {
 		return ServiceFixture::oauth_fetch_profile(
 			$oauth_action, $service_type, $service_name, $kwargs);
 	}
 
 	public function oauth_add_user(
-		$service_type, $service_name, $uname, $access_token,
-		$access_token_secret=null, $refresh_token=null, $profile=[]
+		string $service_type, string $service_name, string $uname,
+		string $access_token, string $access_token_secret=null,
+		string $refresh_token=null, array $profile=[]
 	) {
 		return parent::oauth_add_user(
 			$service_type, $service_name, $uname, $access_token,

@@ -1,16 +1,19 @@
-<?php
+<?php declare(strict_types=1);
+
 
 namespace BFITech\ZapOAuth;
+
 
 use BFITech\ZapCore\Common;
 use BFITech\ZapCore\Logger;
 
+
 /**
  * OAuth2.0 class.
  *
- * @manonly
+ * @if TRUE
  * @SuppressWarnings(PHPMD.LongVariable)
- * @endmanonly
+ * @endif
  */
 class OAuth20Permission extends OAuthCommon {
 
@@ -43,9 +46,9 @@ class OAuth20Permission extends OAuthCommon {
 	 * Constructor.
 	 */
 	public function __construct(
-		$client_id, $client_secret,
-		$url_request_token_auth, $url_access_token,
-		$callback_uri, $scope
+		string $client_id, string $client_secret,
+		string $url_request_token_auth, string $url_access_token,
+		string $callback_uri=null, string $scope=null
 	) {
 		$this->client_id = $client_id;
 		$this->client_secret = $client_secret;
@@ -102,7 +105,7 @@ class OAuth20Permission extends OAuthCommon {
 	 *         - `token_type`, optional, typically 'bearer'
 	 *         - `scope`, optional
 	 */
-	public function site_callback($get) {
+	public function site_callback(array $get) {
 		$redirect_uri = $this->callback_uri;
 
 		$code = null;
@@ -194,9 +197,9 @@ class OAuth20Action extends OAuthCommon {
 	 *     URL. Only required by OAuth20Action::refresh.
 	 */
 	public function __construct(
-		$consumer_key, $consumer_secret,
-		$access_token, $refresh_token=null,
-		$url_access_token=null
+		string $consumer_key, string $consumer_secret,
+		string $access_token, string $refresh_token=null,
+		string $url_access_token=null
 	) {
 		$this->consumer_key = $consumer_key;
 		$this->consumer_secret = $consumer_secret;
@@ -216,7 +219,7 @@ class OAuth20Action extends OAuthCommon {
 	 *     request header is sent. Some services allow TOKEN sent via
 	 *     GET.
 	 */
-	public function request($kwargs, $bearer=true) {
+	public function request(array $kwargs, bool $bearer=true) {
 		if (!isset($kwargs['headers']))
 			$kwargs['headers'] = [];
 		if ($bearer)
@@ -243,7 +246,7 @@ class OAuth20Action extends OAuthCommon {
 	 *     custom HTTP code: -2 := refresh token.
 	 * @todo Untested on live service.
 	 */
-	public function refresh($expect_json=true, $bearer=true) {
+	public function refresh(bool $expect_json=true, bool $bearer=true) {
 		// @codeCoverageIgnoreStart
 		if (!$this->refresh_token || !$this->url_access_token)
 			return [-2, []];

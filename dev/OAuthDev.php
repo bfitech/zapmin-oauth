@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 
 
 namespace BFITech\ZapAdminDev;
@@ -26,12 +26,12 @@ class OAuthRouteDev extends OAuthRoute {
 	 * @param array $args Router variables exactly the same with those
 	 *     in OAuthRoute::route_byway_auth.
 	 *
-	 * @manonly
+	 * @if TRUE
 	 * @SuppressWarnings(PHPMD.CyclomaticComplexity)
 	 * @SuppressWarnings(PHPMD.NPathComplexity)
-	 * @endmanonly
+	 * @endif
 	 */
-	public function route_fake_login($args) {
+	public function route_fake_login(array $args) {
 		$core = $this->core;
 
 		# safeguard so that this won't leak to production
@@ -92,7 +92,7 @@ class OAuthRouteDev extends OAuthRoute {
 	/**
 	 * Fake status.
 	 */
-	public function route_fake_status($args=[]) {
+	public function route_fake_status(array $args=[]) {
 		return $this->core->pj($this->adm_get_safe_user_data());
 	}
 

@@ -11,6 +11,7 @@ use BFITech\ZapCoreDev\RoutingDev;
 use BFITech\ZapStore\SQLite3;
 use BFITech\ZapStore\SQLError;
 use BFITech\ZapAdmin\OAuthRoute;
+use BFITech\ZapOAuth\OAuthCommon;
 use BFITech\ZapOAuth\OAuthError;
 
 
@@ -28,13 +29,16 @@ class Router extends RouterDev {
 class OAuthRoutePatched extends OAuthRoute {
 
 	public function oauth_fetch_profile(
-		$oauth_action, $service_type, $service_name, $kwargs=[]
+		OAuthCommon $oauth_action,
+		string $service_type, string $service_name, array $kwargs=[]
 	) {
 		return ServiceFixture::oauth_fetch_profile(
 			$oauth_action, $service_type, $service_name, $kwargs);
 	}
 
-	public function oauth_finetune_permission($args, $perm) {
+	public function oauth_finetune_permission(
+		array $args, OAuthCommon $perm
+	) {
 		if ($args['params']['service_name'] == 'reddit') {
 			$perm->auth_basic_for_site_callback = true;
 			$perm->access_token_url_extra_params = [

@@ -4,8 +4,8 @@
 # Project related configuration options
 #---------------------------------------------------------------------------
 DOXYFILE_ENCODING      = UTF-8
-PROJECT_NAME           = "ZapOAuth"
-PROJECT_NUMBER         = "1.4"
+PROJECT_NAME           = "Zapmin OAuth"
+PROJECT_NUMBER         = "2.0"
 PROJECT_BRIEF          = "OAuth extension for zapmin."
 PROJECT_LOGO           =
 OUTPUT_DIRECTORY       = ./docs
@@ -103,16 +103,14 @@ WARN_LOGFILE           =
 #---------------------------------------------------------------------------
 # Configuration options related to the input files
 #---------------------------------------------------------------------------
-INPUT                  = src \
-                         dev \
-                         vendor/bfitech \
-                         README.md
+INPUT                  = src dev README.md \
+                         vendor/bfitech/zapmin/src/AdminRoute.php
 INPUT_ENCODING         = UTF-8
 FILE_PATTERNS          = *.php
 RECURSIVE              = YES
 EXCLUDE                = NO
 EXCLUDE_SYMLINKS       = NO
-EXCLUDE_PATTERNS       = */tests/*
+EXCLUDE_PATTERNS       =
 EXCLUDE_SYMBOLS        =
 EXAMPLE_PATH           =
 EXAMPLE_PATTERNS       =

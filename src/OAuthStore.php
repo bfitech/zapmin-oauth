@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 
 
 namespace BFITech\ZapAdmin;
@@ -8,7 +8,12 @@ use BFITech\ZapCore\Common;
 use BFITech\ZapCore\Logger;
 use BFITech\ZapStore\SQL;
 use BFITech\ZapStore\SQLError;
-use BFITech\ZapOAuth as zo;
+use BFITech\ZapOAuth\OAuthError;
+use BFITech\ZapOAuth\OAuthCommon;
+use BFITech\ZapOAuth\OAuth10Permission;
+use BFITech\ZapOAuth\OAuth10Action;
+use BFITech\ZapOAuth\OAuth20Permission;
+use BFITech\ZapOAuth\OAuth20Action;
 
 
 /**
@@ -33,11 +38,9 @@ use BFITech\ZapOAuth as zo;
  *    $act->refresh() that requests access token given a
  *    previously-obtained refresh token.
  *
- * @see AdminStore.
- *
- * @manonly
+ * @if TRUE
  * @SuppressWarnings(PHPMD.LongVariable)
- * @endmanonly
+ * @endif
  */
 abstract class OAuthStore extends AdminRoute {
 
@@ -66,7 +69,7 @@ abstract class OAuthStore extends AdminRoute {
 	 *     `force_create_table`.
 	 * @param mixed $val Config value.
 	 */
-	public function config($key, $val) {
+	public function config(string $key, string $val=null) {
 		switch ($key) {
 			case 'force_create_table':
 				$this->$key = (bool)$val;
@@ -114,15 +117,12 @@ abstract class OAuthStore extends AdminRoute {
 		$sql = $this->store;
 		$logger = $this->logger;
 
-		$logger->deactivate();
 		try {
 			$sql->query("SELECT 1 FROM uoauth");
-			$logger->activate();
 			if (!$this->force_create_table)
 				return;
 		} catch (SQLError $e) {
 		}
-		$logger->activate();
 
 		foreach([
 			"DROP VIEW IF EXISTS v_uoauth;",
@@ -192,7 +192,7 @@ abstract class OAuthStore extends AdminRoute {
 	 * @return dict|null Dict of tokens and oauth information of
 	 *     current service.
 	 */
-	public function adm_get_oauth_tokens($session_token) {
+	public function adm_get_oauth_tokens(string $session_token) {
 		$this->init();
 		$sql = $this->store;
 		$dtnow = $sql->stmt_fragment('datetime', ['delta' => 0]);
@@ -228,17 +228,18 @@ abstract class OAuthStore extends AdminRoute {
 	 *     site callback.
 	 */
 	public function oauth_add_service(
-		$service_type, $service_name,
-		$consumer_key, $consumer_secret,
-		$url_token, $url_token_auth, $url_access,
-		$scope, $url_callback
+		string $service_type, string $service_name,
+		string $consumer_key=null, string $consumer_secret=null,
+		string $url_token=null, string $url_token_auth=null,
+		string $url_access=null,
+		string $scope=null, string $url_callback=null
 	) {
 		$logger = $this->logger;
 
 		if (!in_array($service_type, ['10', '20'])) {
 			$msg = "Invalid service type: '".$service_type."'.";
 			$logger->error($msg);
-			throw new zo\OAuthError($msg);
+			throw new OAuthError($msg);
 		}
 
 		$key = $service_name . '-' . $service_type;
@@ -270,7 +271,7 @@ abstract class OAuthStore extends AdminRoute {
 	 * @param string $service_name Service name.
 	 */
 	public function oauth_get_permission_instance(
-		$service_type, $service_name
+		string $service_type, string $service_name
 	) {
 		$key = $service_name . '-' . $service_type;
 		if (!isset($this->oauth_service_configs[$key]))
@@ -286,12 +287,12 @@ abstract class OAuthStore extends AdminRoute {
 		extract($conf);
 		// @codeCoverageIgnoreStart
 		$perm = $service_type == '10' ?
-			new zo\OAuth10Permission(
+			new OAuth10Permission(
 				$consumer_key, $consumer_secret,
 				$url_request_token, $url_request_token_auth,
 				$url_access_token, $url_callback
 			) :
-			new zo\OAuth20Permission(
+			new OAuth20Permission(
 				$consumer_key, $consumer_secret,
 				$url_request_token_auth, $url_access_token,
 				$url_callback, $scope
@@ -319,7 +320,7 @@ abstract class OAuthStore extends AdminRoute {
 	 *
 	 * @code
 	 * class MyOAuthRoute extends OAuthRoute {
-	 *     public function oauth_permission_finetune($perm, $args) {
+	 *     public function oauth_finetune_permission($args, $perm) {
 	 *         if ($args['params'] == 'reddit')
 	 *             $perm->auth_basic_for_site_callback = true;
 	 *         return $perm;
@@ -327,11 +328,13 @@ abstract class OAuthStore extends AdminRoute {
 	 * }
 	 * @endcode
 	 *
-	 * @manonly
+	 * @if TRUE
 	 * @SuppressWarnings(PHPMD.UnusedFormalParameter)
-	 * @endmanonly
+	 * @endif
 	 */
-	public function oauth_finetune_permission($args, $oauth_perm) {
+	public function oauth_finetune_permission(
+		array $args, OAuthCommon $oauth_perm
+	) {
 		return $oauth_perm;
 	}
 
@@ -353,9 +356,9 @@ abstract class OAuthStore extends AdminRoute {
 	 *     $this->route_byway_callback() or retrieved. OAuth2.0 only.
 	 */
 	public function oauth_get_action_instance(
-		$service_type, $service_name,
-		$access_token, $access_token_secret=null,
-		$refresh_token=null
+		string $service_type, string $service_name,
+		string $access_token, string $access_token_secret=null,
+		string $refresh_token=null
 	) {
 		$key = $service_name . '-' . $service_type;
 		if (!isset($this->oauth_service_configs[$key]))
@@ -365,11 +368,11 @@ abstract class OAuthStore extends AdminRoute {
 		extract($conf);
 		// @codeCoverageIgnoreStart
 		$act = $service_type == '10' ?
-			new zo\OAuth10Action(
+			new OAuth10Action(
 				$conf['consumer_key'], $conf['consumer_secret'],
 				$access_token, $access_token_secret
 			) :
-			new zo\OAuth20Action(
+			new OAuth20Action(
 				$conf['consumer_key'], $conf['consumer_secret'],
 				$access_token, $refresh_token,
 				$conf['url_access_token']
@@ -405,12 +408,13 @@ abstract class OAuthStore extends AdminRoute {
 	 *     @endcode
 	 * @codeCoverageIgnore
 	 *
-	 * @manonly
+	 * @if TRUE
 	 * @SuppressWarnings(PHPMD.UnusedFormalParameter)
-	 * @endmanonly
+	 * @endif
 	 */
 	public function oauth_fetch_profile(
-		$oauth_action, $service_type, $service_name, $kwargs=[]
+		OAuthCommon $oauth_action,
+		string $service_type, string $service_name, array $kwargs=[]
 	) {
 		return [];
 	}
@@ -429,14 +433,15 @@ abstract class OAuthStore extends AdminRoute {
 	 * @param string $access_token_secret Access token secret, OAuth1
 	 *     only.
 	 * @param string $refresh_token Refresh token, OAuth2 only.
-	 * @param dict $profile Additional profile data obtained by
+	 * @param array $profile Additional profile dict obtained by
 	 *     successful $this->oauth_fetch_profile().
 	 *
 	 * @return string Session token.
 	 */
 	protected function oauth_add_user(
-		$service_type, $service_name, $uname, $access_token,
-		$access_token_secret=null, $refresh_token=null, $profile=[]
+		string $service_type, string $service_name, string $uname,
+		string $access_token, string $access_token_secret=null,
+		string $refresh_token=null, array $profile=[]
 	) {
 		$this->init();
 
@@ -506,7 +511,9 @@ abstract class OAuthStore extends AdminRoute {
 	 * @param string $session_token Session token received by
 	 *     cookie or request header.
 	 */
-	public function oauth_get_action_from_session($session_token) {
+	public function oauth_get_action_from_session(
+		string $session_token
+	) {
 		$this->init();
 		$tokens = $this->adm_get_oauth_tokens($session_token);
 		if (!$tokens)

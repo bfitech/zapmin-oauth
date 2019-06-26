@@ -1,15 +1,18 @@
-<?php
+<?php declare(strict_types=1);
+
 
 namespace BFITech\ZapOAuth;
 
+
 use BFITech\ZapCore\Common;
+
 
 /**
  * OAuth1.0 class.
  *
- * @manonly
+ * @if TRUE
  * @SuppressWarnings(PHPMD.LongVariable)
- * @endmanonly
+ * @endif
  */
 class OAuth10Permission extends OAuthCommon {
 
@@ -27,9 +30,9 @@ class OAuth10Permission extends OAuthCommon {
 	 * Constructor.
 	 */
 	public function __construct(
-		$consumer_key, $consumer_secret,
-		$url_request_token, $url_request_token_auth,
-		$url_access_token, $url_callback
+		string $consumer_key, string $consumer_secret,
+		string $url_request_token, string $url_request_token_auth,
+		string $url_access_token, string $url_callback
 	) {
 		$this->consumer_key = $consumer_key;
 		$this->consumer_secret = $consumer_secret;
@@ -48,8 +51,8 @@ class OAuth10Permission extends OAuthCommon {
 	 *     nonce and timestamp.
 	 */
 	protected function generate_signature(
-		$url, $method='GET', $extra_params=[],
-		$with_token_secret=null
+		string $url, string $method='GET', array $extra_params=[],
+		string $with_token_secret=null
 	) {
 		$params = [
 			'oauth_version' => '1.0',
@@ -101,8 +104,8 @@ class OAuth10Permission extends OAuthCommon {
 	 * Generate Authorization HTTP header.
 	 */
 	protected function generate_auth_header(
-		$url, $method='GET', $extra_params=[],
-		$with_token_secret=null
+		string $url, string $method='GET', array $extra_params=[],
+		string $with_token_secret=null
 	) {
 		$params = $this->generate_signature(
 			$url, $method, $extra_params, $with_token_secret);
@@ -166,7 +169,7 @@ class OAuth10Permission extends OAuthCommon {
 	 *     by previous request_token(), if exists.
 	 */
 	private function authenticate_request_token(
-		$oauth_token, $oauth_verifier=null
+		string $oauth_token, string $oauth_verifier=null
 	) {
 		$url = sprintf(
 			'%s?oauth_token=%s',
@@ -216,7 +219,7 @@ class OAuth10Permission extends OAuthCommon {
 	 *         - oauth_token
 	 *         - oauth_token_secret
 	 */
-	public function site_callback($get) {
+	public function site_callback(array $get) {
 
 		$oauth_token = $oauth_verifier = null;
 		if (!Common::check_idict($get, ['oauth_token']))
@@ -290,8 +293,8 @@ class OAuth10Action extends OAuth10Permission {
 	 *     returned by site_callback() or retrieved from storage.
 	 */
 	public function __construct(
-		$consumer_key, $consumer_secret,
-		$access_token, $access_token_secret
+		string $consumer_key, string $consumer_secret,
+		string $access_token, string $access_token_secret
 	) {
 		$this->consumer_key = $consumer_key;
 		$this->consumer_secret = $consumer_secret;
@@ -310,7 +313,7 @@ class OAuth10Action extends OAuth10Permission {
 	 * @param array $kwargs Common::http_client kwargs parameter.
 	 * @return array Standard return value of Common::http_client.
 	 */
-	public function request($kwargs) {
+	public function request(array $kwargs) {
 		if (!isset($kwargs['get']))
 			$kwargs['get'] = [];
 		$kwargs['get']['oauth_token'] = $this->access_token;
