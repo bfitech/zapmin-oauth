@@ -197,8 +197,8 @@ class OAuth10Test extends TestCase {
 			$access_token, $access_token_secret, null, $data);
 
 		# check if we're truly signed in
-		$adm->adm_set_user_token($session_token);
-		$rv = $adm->adm_status();
+		$adm->set_token_value($session_token);
+		$rv = $adm->get_safe_user_data()[1];
 		$this->assertEquals($rv['fname'], 'John Smith');
 
 		# retrieve all stored tokens

@@ -42,7 +42,7 @@ use BFITech\ZapOAuth\OAuth20Action;
  * @SuppressWarnings(PHPMD.LongVariable)
  * @endif
  */
-abstract class OAuthStore extends AdminRoute {
+abstract class OAuthStore extends AuthManage {
 
 	/**
 	 * Service register.
@@ -63,21 +63,35 @@ abstract class OAuthStore extends AdminRoute {
 	private $initialized = false;
 
 	/**
-	 * Configure.
+	 * Constructor.
 	 *
-	 * @param string $key Config key. Available key:
-	 *     `force_create_table`.
-	 * @param mixed $val Config value.
+	 * @param SQL $store SQL instance.
+	 * @param Logger $logger Logger instance.
 	 */
-	public function config(string $key, string $val=null) {
-		switch ($key) {
-			case 'force_create_table':
-				$this->$key = (bool)$val;
-				break;
-		}
-		parent::config($key, $val);
-		return $this;
+	public function __construct(
+		SQL $store, Logger $logger=null
+	) {
+		$admin = new Admin($store, $logger);
+		$admin->config('check_tables', 'true');
+		parent::__construct($admin, $logger);
 	}
+
+	// /**
+	//  * Configure.
+	//  *
+	//  * @param string $key Config key. Available key:
+	//  *     `force_create_table`.
+	//  * @param mixed $val Config value.
+	//  */
+	// public function config(string $key, string $val=null) {
+	// 	switch ($key) {
+	// 		case 'force_create_table':
+	// 			$this->$key = (bool)$val;
+	// 			break;
+	// 	}
+	// 	parent::config($key, $val);
+	// 	return $this;
+	// }
 
 	/**
 	 * Initialize object.
@@ -88,7 +102,7 @@ abstract class OAuthStore extends AdminRoute {
 		if ($this->initialized)
 			return $this;
 		$this->initialized = true;
-		parent::init();
+		parent::$admin->init();
 		$this->oauth_create_table();
 		return $this;
 	}
@@ -114,8 +128,8 @@ abstract class OAuthStore extends AdminRoute {
 	 * and use them for request or refresh.
 	 */
 	private function oauth_create_table() {
-		$sql = $this->store;
-		$logger = $this->logger;
+		$sql = $this::$admin::$store;
+		$logger = $this::$logger;
 
 		try {
 			$sql->query("SELECT 1 FROM uoauth");
@@ -194,7 +208,7 @@ abstract class OAuthStore extends AdminRoute {
 	 */
 	public function adm_get_oauth_tokens(string $session_token) {
 		$this->init();
-		$sql = $this->store;
+		$sql = $this::$admin::$store;
 		$dtnow = $sql->stmt_fragment('datetime', ['delta' => 0]);
 		$stmt = (
 			"SELECT oname, otype, access, access_secret, refresh " .
@@ -234,7 +248,7 @@ abstract class OAuthStore extends AdminRoute {
 		string $url_access=null,
 		string $scope=null, string $url_callback=null
 	) {
-		$logger = $this->logger;
+		$logger = $this::$logger;
 
 		if (!in_array($service_type, ['10', '20'])) {
 			$msg = "Invalid service type: '".$service_type."'.";
@@ -306,37 +320,37 @@ abstract class OAuthStore extends AdminRoute {
 		return $perm;
 	}
 
-	/**
-	 * Finetune permission instance.
-	 *
-	 * Override this in a subclass to change, e.g.
-	 * auth_basic_for_site_callback in OAuth2.0.
-	 *
-	 * @param dict $args Router HTTP variables.
-	 * @param object $oauth_perm OAuth*Permission instance.
-	 * @codeCoverageIgnore
-	 *
-	 * ### Example:
-	 *
-	 * @code
-	 * class MyOAuthRoute extends OAuthRoute {
-	 *     public function oauth_finetune_permission($args, $perm) {
-	 *         if ($args['params'] == 'reddit')
-	 *             $perm->auth_basic_for_site_callback = true;
-	 *         return $perm;
-	 *     }
-	 * }
-	 * @endcode
-	 *
-	 * @if TRUE
-	 * @SuppressWarnings(PHPMD.UnusedFormalParameter)
-	 * @endif
-	 */
-	public function oauth_finetune_permission(
-		array $args, OAuthCommon $oauth_perm
-	) {
-		return $oauth_perm;
-	}
+	// /**
+	//  * Finetune permission instance.
+	//  *
+	//  * Override this in a subclass to change, e.g.
+	//  * auth_basic_for_site_callback in OAuth2.0.
+	//  *
+	//  * @param dict $args Router HTTP variables.
+	//  * @param object $oauth_perm OAuth*Permission instance.
+	//  * @codeCoverageIgnore
+	//  *
+	//  * ### Example:
+	//  *
+	//  * @code
+	//  * class MyOAuthRoute extends OAuthRoute {
+	//  *     public function oauth_finetune_permission($args, $perm) {
+	//  *         if ($args['params'] == 'reddit')
+	//  *             $perm->auth_basic_for_site_callback = true;
+	//  *         return $perm;
+	//  *     }
+	//  * }
+	//  * @endcode
+	//  *
+	//  * @if TRUE
+	//  * @SuppressWarnings(PHPMD.UnusedFormalParameter)
+	//  * @endif
+	//  */
+	// public function oauth_finetune_permission(
+	// 	array $args, OAuthCommon $oauth_perm
+	// ) {
+	// 	return $oauth_perm;
+	// }
 
 	/**
 	 * Instantiate OAuth*Action class.
@@ -386,38 +400,38 @@ abstract class OAuthStore extends AdminRoute {
 		return $act;
 	}
 
-	/**
-	 * Profile fetcher stub.
-	 *
-	 * Use this to populate user bio after user is successfully
-	 * authenticated.
-	 *
-	 * @param object $oauth_action Instance of OAuth action.
-	 * @param string $service_type Service type.
-	 * @param string $service_name Service name.
-	 * @param array $kwargs Additional arguments.
-	 * @return On successful authentication, a dict of the
-	 *     form:
-	 *     @code
-	 *     (dict){
-	 *         'uname': (string)uname,
-	 *         'fname': (optional string)fname,
-	 *         'email': (optional string)email,
-	 *         'site': (optional string)site,
-	 *     }
-	 *     @endcode
-	 * @codeCoverageIgnore
-	 *
-	 * @if TRUE
-	 * @SuppressWarnings(PHPMD.UnusedFormalParameter)
-	 * @endif
-	 */
-	public function oauth_fetch_profile(
-		OAuthCommon $oauth_action,
-		string $service_type, string $service_name, array $kwargs=[]
-	) {
-		return [];
-	}
+	// /**
+	//  * Profile fetcher stub.
+	//  *
+	//  * Use this to populate user bio after user is successfully
+	//  * authenticated.
+	//  *
+	//  * @param object $oauth_action Instance of OAuth action.
+	//  * @param string $service_type Service type.
+	//  * @param string $service_name Service name.
+	//  * @param array $kwargs Additional arguments.
+	//  * @return On successful authentication, a dict of the
+	//  *     form:
+	//  *     @code
+	//  *     (dict){
+	//  *         'uname': (string)uname,
+	//  *         'fname': (optional string)fname,
+	//  *         'email': (optional string)email,
+	//  *         'site': (optional string)site,
+	//  *     }
+	//  *     @endcode
+	//  * @codeCoverageIgnore
+	//  *
+	//  * @if TRUE
+	//  * @SuppressWarnings(PHPMD.UnusedFormalParameter)
+	//  * @endif
+	//  */
+	// public function oauth_fetch_profile(
+	// 	OAuthCommon $oauth_action,
+	// 	string $service_type, string $service_name, array $kwargs=[]
+	// ) {
+	// 	return [];
+	// }
 
 	/**
 	 * Add new user after successful authorization.
@@ -448,22 +462,23 @@ abstract class OAuthStore extends AdminRoute {
 		# build passwordless account using obtained uname with uservice
 		# having the form 'oauth%service_type%[%service_name%]
 
-		$args = [];
 		$uname = rawurlencode($uname);
 		$uservice = sprintf(
 			'oauth%s[%s]', $service_type, $service_name);
-		$args['service'] = [
+		$args = [
 			'uname' => $uname,
 			'uservice' => $uservice,
 		];
 
 		# register passwordless
 
-		$retval = $this->adm_self_add_user_passwordless($args);
+		$retval = $this->self_add_passwordless($args);
+		// if ($retval[0] != 0)
+		// 	return $retval;
 		$udata = $retval[1];
 		$session_token = $udata['token'];
 
-		$sql = $this->store;
+		$sql = $this::$admin::$store;
 
 		# save additional udate from profile retriever if exists
 
