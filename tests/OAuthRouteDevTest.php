@@ -4,6 +4,9 @@
 use PHPUnit\Framework\TestCase;
 use BFITech\ZapCore\Logger;
 use BFITech\ZapStore\SQLite3;
+use BFITech\ZapAdmin\Admin;
+use BFITech\ZapAdmin\AuthCtrl;
+use BFITech\ZapAdmin\AuthManage;
 use BFITech\ZapAdminDev\OAuthRouteDev;
 use BFITech\ZapCoreDev\RouterDev;
 use BFITech\ZapCoreDev\RoutingDev;
@@ -24,10 +27,20 @@ class OAuthRouteDevTest extends TestCase {
 	}
 
 	private function create_route() {
+		$store = new SQLite3(
+			['dbname' => ':memory:'], self::$logger);
+		$core = (new RouterDev())
+			->config('logger', self::$logger);
+		$admin = new Admin($store, self::$logger);
+		$admin
+			->config('expire', 3600)
+			->config('token_name', 'testing')
+			->config('check_tables', true);
+		$ctrl = new AuthCtrl($admin, self::$logger);
+		$manage = new AuthManage($admin, self::$logger);
+		$adm = new OAuthRouteDev($core, $ctrl, $manage);
 
-		$adm = new OAuthRouteDev(self::$store, self::$logger,
-			null, self::$core);
-		$adm->adm_set_token_name('testing');
+		// $adm->adm_set_token_name('testing');
 		$adm->oauth_add_service(
 			'10', 'twitter',
 			'test-consumer-key', 'test-consumer-secret',
@@ -50,7 +63,7 @@ class OAuthRouteDevTest extends TestCase {
 
 	public function test_fake_login() {
 		$adm = $this->create_route();
-		$core = $adm->core;
+		$core = $adm::$core;
 		$rdev = new RoutingDev($core);
 
 		$rdev->request('/oauth/10/github/auth');
@@ -121,4 +134,3 @@ class OAuthRouteDevTest extends TestCase {
 		$this->assertEquals($core::$data['email'], 'me@tumblr.xyz');
 	}
 }
-

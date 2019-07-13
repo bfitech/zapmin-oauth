@@ -7,8 +7,11 @@ require_once(__DIR__ . '/OAuthFixture.php');
 use PHPUnit\Framework\TestCase;
 use BFITech\ZapCore\Common;
 use BFITech\ZapCore\Logger;
+use BFITech\ZapCoreDev\RouterDev;
 use BFITech\ZapStore\SQLite3;
-use BFITech\ZapAdmin\AdminStore;
+use BFITech\ZapAdmin\Admin;
+use BFITech\ZapAdmin\AuthCtrl;
+use BFITech\ZapAdmin\AuthManage;
 use BFITech\ZapAdmin\OAuthStore;
 use BFITech\ZapOAuth\OAuthCommon;
 use BFITech\ZapOAuth\OAuthError;
@@ -49,7 +52,16 @@ class OAuth10Test extends TestCase {
 	private function register_services() {
 		$store = new SQLite3(
 			['dbname' => ':memory:'], self::$logger);
-		$adm = new OAuth10Store($store, self::$logger);
+		$core = (new RouterDev())
+			->config('logger', self::$logger);
+		$admin = new Admin($store, self::$logger);
+		$admin
+			->config('expire', 3600)
+			->config('token_name', 'testing')
+			->config('check_tables', true);
+		$ctrl = new AuthCtrl($admin, self::$logger);
+		$manage = new AuthManage($admin, self::$logger);
+		$adm = new OAuth10Store($core, $ctrl, $manage);
 
 		try {
 			$adm->oauth_add_service(
@@ -197,9 +209,9 @@ class OAuth10Test extends TestCase {
 			$access_token, $access_token_secret, null, $data);
 
 		# check if we're truly signed in
-		$adm->set_token_value($session_token);
-		$rv = $adm->get_safe_user_data()[1];
-		$this->assertEquals($rv['fname'], 'John Smith');
+		$adm::$ctrl->set_token_value($session_token);
+		$rv = $adm::$ctrl->get_safe_user_data();
+		$this->assertEquals($rv[1]['fname'], 'John Smith');
 
 		# retrieve all stored tokens
 		$rv = $adm->adm_get_oauth_tokens($session_token);

@@ -10,7 +10,11 @@ use BFITech\ZapCoreDev\RouterDev;
 use BFITech\ZapCoreDev\RoutingDev;
 use BFITech\ZapStore\SQLite3;
 use BFITech\ZapStore\SQLError;
+use BFITech\ZapAdmin\Admin;
+use BFITech\ZapAdmin\AuthCtrl;
+use BFITech\ZapAdmin\AuthManage;
 use BFITech\ZapAdmin\OAuthRoute;
+use BFITech\ZapAdmin\OAuthStore;
 use BFITech\ZapOAuth\OAuthCommon;
 use BFITech\ZapOAuth\OAuthError;
 
@@ -66,6 +70,13 @@ class OAuthRoute20Patched extends OAuthRoutePatched {
 
 }
 
+function testdir() {
+	$dir = __DIR__ . '/testdata';
+	if (!is_dir($dir))
+		mkdir($dir, 0755);
+	return $dir;
+}
+
 class OAuthRouteTest extends TestCase {
 
 	public static $store;
@@ -73,18 +84,28 @@ class OAuthRouteTest extends TestCase {
 	public static $core;
 
 	public static function setUpBeforeClass() {
-		self::$logger = new Logger(Logger::ERROR, '/dev/null');
+		// self::$logger = new Logger(Logger::ERROR, '/dev/null');
+		$logfile = testdir() . '/zapmin-route.log';
+		if (file_exists($logfile))
+			unlink($logfile);
+		self::$logger = new Logger(
+			Logger::DEBUG, $logfile);
+
 		self::$store = new SQLite3(['dbname' => ':memory:'],
 			self::$logger);
 		self::$core = (new Router())->config('home', '/');
 	}
 
 	private function create_route_10() {
-
-		$adm = new OAuthRoute10Patched(self::$store, self::$logger,
-			null, self::$core);
-		$adm->adm_set_token_name('testing');
-		$adm->oauth_add_service(
+		$admin = new Admin(self::$store, self::$logger);
+		$admin
+			->config('expire', 3600)
+			->config('token_name', 'testing')
+			->config('check_tables', true);
+		$ctrl = new AuthCtrl($admin, self::$logger);
+		$manage = new AuthManage($admin, self::$logger);
+		$router = new OAuthRoute10Patched(self::$core, $ctrl, $manage);
+		$router->oauth_add_service(
 			'10', 'tumblr',
 			'test-consumer-key', 'test-consumer-secret',
 			'http://tumblr.example.org/10/auth_request',
@@ -92,7 +113,7 @@ class OAuthRouteTest extends TestCase {
 			'http://tumblr.example.org/10/access',
 			null, 'http://localhost'
 		);
-		$adm->oauth_add_service(
+		$router->oauth_add_service(
 			'10', 'twitter',
 			'test-consumer-key', 'test-consumer-secret',
 			'http://twitter.example.org/10/auth_request',
@@ -100,14 +121,19 @@ class OAuthRouteTest extends TestCase {
 			'http://twitter.example.org/10/access',
 			null, 'http://localhost'
 		);
-		return $adm;
+		return $router;
 	}
 
 	private function create_route_20() {
-		$adm = new OAuthRoute20Patched(self::$store, self::$logger,
-			null, self::$core);
-		$adm->adm_set_token_name('testing');
-		$adm->oauth_add_service(
+		$admin = new Admin(self::$store, self::$logger);
+		$admin
+			->config('expire', 3600)
+			->config('token_name', 'testing')
+			->config('check_tables', true);
+		$ctrl = new AuthCtrl($admin, self::$logger);
+		$manage = new AuthManage($admin, self::$logger);
+		$router = new OAuthRoute20Patched(self::$core, $ctrl, $manage);
+		$router->oauth_add_service(
 			'20', 'reddit',
 			'test-consumer-key', 'test-consumer-secret',
 			null,
@@ -115,7 +141,7 @@ class OAuthRouteTest extends TestCase {
 			'http://reddit.example.org/20/access',
 			'email', 'http://localhost'
 		);
-		return $adm;
+		return $router;
 	}
 
 	public function test_constructor() {
@@ -132,24 +158,31 @@ class OAuthRouteTest extends TestCase {
 		}
 		$this->assertTrue($no_table);
 
-		$adm = new OAuthRoute10Patched($store, $logger,
-			null, $core);
-		# deinit won't take effect on uninited instance
-		$adm->deinit();
-		# let's init
-		$adm->init();
+		$admin = new Admin($store, $logger);
+		$admin
+			->config('expire', 3600)
+			->config('token_name', 'testing')
+			->config('check_tables', true);
+		$ctrl = new AuthCtrl($admin, $logger);
+		$manage = new AuthManage($admin, $logger);
+		$router = new OAuthRoute10Patched($core, $ctrl, $manage);
 
-		# table just got installed with one default user
-		$store->query("SELECT 1 FROM uoauth");
-
-		# let's ruin default user from the db
-		$store->update('udata', ['uname' => 'toor'],
-			['uname' => 'root']);
-
-		# recreate tables, including those installed by AdminStore
-		$adm->deinit()
-			->config('force_create_table', true)
-			->init();
+		// # deinit won't take effect on uninited instance
+		// $router->deinit();
+		// # let's init
+		// $router->init();
+		//
+		// # table just got installed with one default user
+		// $store->query("SELECT 1 FROM uoauth");
+		//
+		// # let's ruin default user from the db
+		// $store->update('udata', ['uname' => 'toor'],
+		// 	['uname' => 'root']);
+		//
+		// # recreate tables, including those installed by AdminStore
+		// $router->deinit()
+		// 	->config('force_create_table', true)
+		// 	->init();
 
 		$this->assertNotFalse(
 			$store->query("SELECT uid FROM udata WHERE uname=?",
@@ -168,54 +201,54 @@ class OAuthRouteTest extends TestCase {
 
 	public function test_route_10() {
 
-		$adm = $this->create_route_10();
-		$adm->oauth_callback_fail_redirect = 'http://localhost/fail';
-		$adm->oauth_callback_ok_redirect = null;
-		$core = $adm->core;
+		$router = $this->create_route_10();
+		$router->oauth_callback_fail_redirect = 'http://localhost/fail';
+		$router->oauth_callback_ok_redirect = null;
+		$core = $router::$core;
 		$rdev = new RoutingDev($core);
 
 		# invalid params
 		$rdev->request('/');
-		$adm->route('/', [$adm, 'route_byway_auth']);
+		$router->route('/', [$router, 'route_byway_auth']);
 		$this->assertEquals($core::$code, 404);
 		$this->assertEquals($core::$body['errno'],
 			OAuthError::INCOMPLETE_DATA);
 
 		# wrong route callback application
 		$rdev->request('/oauth/wrong/url');
-		$adm->route('/oauth/wrong/url',
-			[$adm, 'route_byway_auth']);
+		$router->route('/oauth/wrong/url',
+			[$router, 'route_byway_auth']);
 		$this->assertEquals($core::$code, 404);
 		$this->assertEquals($core::$body['errno'],
 			OAuthError::INCOMPLETE_DATA);
 
 		# unregistered service
 		$rdev->request('/oauth/10/vk/auth');
-		$adm->route('/oauth/<service_type>/<service_name>/auth',
-			[$adm, 'route_byway_auth']);
+		$router->route('/oauth/<service_type>/<service_name>/auth',
+			[$router, 'route_byway_auth']);
 		$this->assertEquals($core::$code, 404);
 		$this->assertEquals($core::$body['errno'],
 			OAuthError::SERVICE_UNKNOWN);
 
 		# server/network error, see fixture
 		$rdev->request('/oauth/10/tumblr/auth');
-		$adm->route('/oauth/<service_type>/<service_name>/auth',
-			[$adm, 'route_byway_auth']);
+		$router->route('/oauth/<service_type>/<service_name>/auth',
+			[$router, 'route_byway_auth']);
 		$this->assertEquals($core::$code, 503);
 		$this->assertEquals($core::$body['errno'],
 			OAuthError::ACCESS_URL_MISSING);
 
 		# access token success
 		$rdev->request('/oauth/10/twitter/auth');
-		$adm->route('/oauth/<service_type>/<service_name>/auth',
-			[$adm, 'route_byway_auth']);
+		$router->route('/oauth/<service_type>/<service_name>/auth',
+			[$router, 'route_byway_auth']);
 		$this->assertEquals($core::$code, 200);
 		$auth_url = $core::$body['data'];
 		$this->assertEquals(0,
 			strpos($auth_url, 'http://example.org/10/auth'));
 
 		# open access token URL
-		$access = $adm->http_client([
+		$access = $router->http_client([
 			'method' => 'GET',
 			'url' => $auth_url,
 		]);
@@ -228,49 +261,49 @@ class OAuthRouteTest extends TestCase {
 		# failed authentication due to wrong query string
 		$rdev->request('/oauth/10/twitter/callback', 'GET',
 			['get' => ['wrong' => 'data']]);
-		$adm->route('/oauth/<service_type>/<service_name>/callback',
-			[$adm, 'route_byway_callback']);
+		$router->route('/oauth/<service_type>/<service_name>/callback',
+			[$router, 'route_byway_callback']);
 		# redirect to fail callback
 		$this->assertEquals($core::$code, 301);
 		$this->assertEquals(
 			$this->get_redir_url($core::$head),
-			$adm->oauth_callback_fail_redirect);
+			$router->oauth_callback_fail_redirect);
 
 		# failed authentication due to wrong service
 		$rdev->request('/oauth/10/tumblr/callback', 'GET',
 			['get' => $received_qs]);
-		$adm->route('/oauth/<service_type>/<service_name>/callback',
-			[$adm, 'route_byway_callback']);
+		$router->route('/oauth/<service_type>/<service_name>/callback',
+			[$router, 'route_byway_callback']);
 		# redirect to fail callback
 		$this->assertEquals($core::$code, 301);
 		$this->assertEquals(
 			$this->get_redir_url($core::$head),
-			$adm->oauth_callback_fail_redirect);
+			$router->oauth_callback_fail_redirect);
 
 		# successful authentication
 		$rdev->request('/oauth/10/twitter/callback', 'GET',
 			['get' => $received_qs]);
-		$adm->route('/oauth/<service_type>/<service_name>/callback',
-			[$adm, 'route_byway_callback']);
+		$router->route('/oauth/<service_type>/<service_name>/callback',
+			[$router, 'route_byway_callback']);
 		# redirect to ok callback
 		$this->assertEquals($core::$code, 301);
 		$this->assertEquals(
 			$this->get_redir_url($core::$head),
-			$adm->core->get_home());
+			$router::$core->get_home());
 
 		# token is sent via cookie only, which is not available in
 		# the test; let's pull it from database
-		$session_token = $adm->store->query(
+		$session_token = $router::$ctrl::$admin::$store->query(
 			"SELECT token FROM usess " .
 			"ORDER BY sid DESC LIMIT 1")['token'];
 
 		# use session token for signing in
-		$adm->adm_set_user_token($session_token);
-		$rv = $adm->adm_status();
+		$router::$ctrl->set_token_value($session_token);
+		$rv = $router::$ctrl->get_user_data();
 		$this->assertEquals($rv['token'], $session_token);
 
 		# token can be used to instantiate oauth action
-		$act = $adm->oauth_get_action_from_session($session_token);
+		$act = $router->oauth_get_action_from_session($session_token);
 		# action instance can be used to make requests
 		$rv = $act->request([
 			'method' => 'GET',
@@ -283,35 +316,35 @@ class OAuthRouteTest extends TestCase {
 
 	public function test_route_20() {
 
-		$adm = $this->create_route_20();
-		#$adm->oauth_callback_fail_redirect = 'http://localhost/fail';
-		$adm->oauth_callback_ok_redirect = 'http://localhost/ok';
-		$core = $adm->core;
+		$router = $this->create_route_20();
+		#$router->oauth_callback_fail_redirect = 'http://localhost/fail';
+		$router->oauth_callback_ok_redirect = 'http://localhost/ok';
+		$core = $router::$core;
 		$rdev = new RoutingDev($core);
 
 		# invalid params
 		$rdev->request('/');
-		$adm->route('/', [$adm, 'route_byway_auth']);
+		$router->route('/', [$router, 'route_byway_auth']);
 		$this->assertEquals($core::$code, 404);
 
 		# unregistered service
 		$rdev->request('/oauth/20/instagram/auth');
-		$adm->route('/oauth/<service_type>/<service_name>/auth',
-			[$adm, 'route_byway_auth']);
+		$router->route('/oauth/<service_type>/<service_name>/auth',
+			[$router, 'route_byway_auth']);
 		$this->assertEquals($core::$code, 404);
 		$this->assertEquals($core::$body['errno'],
 			OAuthError::SERVICE_UNKNOWN);
 
 		# success
 		$rdev->request('/oauth/20/reddit/auth');
-		$adm->route('/oauth/<service_type>/<service_name>/auth',
-			[$adm, 'route_byway_auth']);
+		$router->route('/oauth/<service_type>/<service_name>/auth',
+			[$router, 'route_byway_auth']);
 		$this->assertEquals($core::$code, 200);
 		$auth_url = $core::$body['data'];
 		$this->assertSame(0,
 			strpos($auth_url, 'http://reddit.example.org/20/auth'));
 
-		$access = $adm->http_client([
+		$access = $router->http_client([
 			'method' => 'GET',
 			'url' => $auth_url,
 		]);
@@ -323,27 +356,27 @@ class OAuthRouteTest extends TestCase {
 
 		# wrong route callback application
 		$rdev->request('/oauth/wrong/url');
-		$adm->route('/oauth/wrong/url',
-			[$adm, 'route_byway_callback']);
+		$router->route('/oauth/wrong/url',
+			[$router, 'route_byway_callback']);
 		$this->assertEquals($core::$code, 404);
 
 		# visiting invalid site callback
 		$rdev->request('/oauth/20/google/callback');
-		$adm->route('/oauth/<service_type>/<service_name>/callback',
-			[$adm, 'route_byway_callback']);
+		$router->route('/oauth/<service_type>/<service_name>/callback',
+			[$router, 'route_byway_callback']);
 		$this->assertEquals($core::$code, 404);
 
 		# failed authentication without redirect, shows abort(503)
 		$rdev->request('/oauth/20/reddit/callback', 'GET', [
 			'get' => ['wrong' => 'data']]);
-		$adm->route('/oauth/<service_type>/<service_name>/callback',
-			[$adm, 'route_byway_callback']);
+		$router->route('/oauth/<service_type>/<service_name>/callback',
+			[$router, 'route_byway_callback']);
 		$this->assertEquals($core::$code, 503);
 
 		$rdev->request('/oauth/20/reddit/callback', 'GET', [
 			'get' => $received_qs]);
-		$adm->route('/oauth/<service_type>/<service_name>/callback',
-			[$adm, 'route_byway_callback']);
+		$router->route('/oauth/<service_type>/<service_name>/callback',
+			[$router, 'route_byway_callback']);
 		$this->assertEquals($core::$code, 301);
 		$redir_local = explode(
 			' ', array_filter($core::$head, function($ele){
@@ -351,20 +384,20 @@ class OAuthRouteTest extends TestCase {
 			})[0]
 		)[1];
 		$this->assertEquals($redir_local,
-			$adm->oauth_callback_ok_redirect);
+			$router->oauth_callback_ok_redirect);
 
 		# token is sent via cookie only, which is not available in
 		# the test; let's pull it from database
-		$session_token = $adm->store->query(
+		$session_token = $router::$ctrl::$admin::$store->query(
 			"SELECT token FROM usess " .
 			"ORDER BY sid DESC LIMIT 1")['token'];
 
 		# use session token for signing in
-		$adm->adm_set_user_token($session_token);
-		$rv = $adm->adm_status();
+		$router::$ctrl->set_token_value($session_token);
+		$rv = $router::$ctrl->get_user_data();
 		$this->assertEquals($rv['token'], $session_token);
 
-		$act = $adm->oauth_get_action_from_session($session_token);
+		$act = $router->oauth_get_action_from_session($session_token);
 		$rv = $act->request([
 			'method' => 'GET',
 			'url' => 'http://reddit.example.org/20/api/me',

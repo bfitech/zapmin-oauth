@@ -24,7 +24,7 @@ class OAuthRoute extends OAuthStore {
 	 */
 	public function route_byway_auth($args) {
 		$service_type = $service_name = null;
-		$core = $this->core;
+		$core = self::$core;
 		$params = $args['params'];
 		if (!Common::check_idict($params,
 			['service_type', 'service_name'])
@@ -52,7 +52,7 @@ class OAuthRoute extends OAuthStore {
 	 * Wrapper for callback error handler.
 	 */
 	private function _route_byway_failed() {
-		$core = $this->core;
+		$core = self::$core;
 		# fail redirect available
 		if ($this->oauth_callback_fail_redirect)
 			return $core->redirect(
@@ -79,8 +79,8 @@ class OAuthRoute extends OAuthStore {
 	 */
 	public function route_byway_callback($args) {
 
-		$core = $this->core;
-		$logger = $this->logger;
+		$core = self::$core;
+		$logger = self::$ctrl::$logger;
 
 		$params = $args['params'];
 		if (!Common::check_idict($params,
@@ -147,12 +147,12 @@ class OAuthRoute extends OAuthStore {
 			$refresh_token, $profile
 		);
 		// @codeCoverageIgnoreEnd
-		$expiration = $this->store->time() +
-			$this->adm_get_byway_expiration();
+		$expiration = self::$ctrl::$admin::$store->time() +
+			self::$ctrl::$admin->get_expiration();
 
 		# always autologin on success
 
-		$this->adm_set_user_token($session_token);
+		self::$ctrl->set_token_value($session_token);
 		$core->send_cookie($this->token_name, $session_token,
 			$expiration, '/');
 		$logger->debug(

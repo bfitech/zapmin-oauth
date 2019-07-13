@@ -32,7 +32,7 @@ class OAuthRouteDev extends OAuthRoute {
 	 * @endif
 	 */
 	public function route_fake_login(array $args) {
-		$core = $this->core;
+		$core = self::$core;
 
 		# safeguard so that this won't leak to production
 		if (!defined('ZAPMIN_OAUTH_DEV'))
@@ -47,7 +47,7 @@ class OAuthRouteDev extends OAuthRoute {
 		}
 		extract($params);
 
-		if ($this->adm_status())
+		if (self::$ctrl->get_user_data())
 			return $core::pj([1], 401);
 		if (!isset($args['get']['email']))
 			return $core::pj([OAuthError::INCOMPLETE_DATA], 403);
@@ -92,8 +92,8 @@ class OAuthRouteDev extends OAuthRoute {
 	/**
 	 * Fake status.
 	 */
-	public function route_fake_status(array $args=[]) {
-		return $this->core->pj($this->adm_get_safe_user_data());
+	public function route_fake_status() {
+		return self::$core->pj(self::$ctrl->get_safe_user_data());
 	}
 
 }

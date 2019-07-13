@@ -42,7 +42,7 @@ use BFITech\ZapOAuth\OAuth20Action;
  * @SuppressWarnings(PHPMD.LongVariable)
  * @endif
  */
-abstract class OAuthStore extends AuthManage {
+abstract class OAuthStore extends RouteDefault {
 
 	/**
 	 * Service register.
@@ -68,12 +68,14 @@ abstract class OAuthStore extends AuthManage {
 	 * @param SQL $store SQL instance.
 	 * @param Logger $logger Logger instance.
 	 */
-	public function __construct(
-		SQL $store, Logger $logger=null
-	) {
-		$admin = new Admin($store, $logger);
-		$admin->config('check_tables', 'true');
-		parent::__construct($admin, $logger);
+	public function config(string $key, string $val=null) {
+		switch ($key) {
+			case 'force_create_table':
+				$this->$key = (bool)$val;
+				break;
+		}
+		// parent::config($key, $val);
+		return $this;
 	}
 
 	// /**
@@ -102,7 +104,7 @@ abstract class OAuthStore extends AuthManage {
 		if ($this->initialized)
 			return $this;
 		$this->initialized = true;
-		parent::$admin->init();
+		self::$ctrl::$admin->init();
 		$this->oauth_create_table();
 		return $this;
 	}
@@ -116,7 +118,7 @@ abstract class OAuthStore extends AuthManage {
 		if (!$this->initialized)
 			return $this;
 		$this->initialized = false;
-		parent::deinit();
+		// parent::deinit();
 		return $this;
 	}
 
@@ -128,8 +130,8 @@ abstract class OAuthStore extends AuthManage {
 	 * and use them for request or refresh.
 	 */
 	private function oauth_create_table() {
-		$sql = $this::$admin::$store;
-		$logger = $this::$logger;
+		$sql = self::$ctrl::$admin::$store;
+		$logger = self::$ctrl::$logger;
 
 		try {
 			$sql->query("SELECT 1 FROM uoauth");
@@ -208,7 +210,7 @@ abstract class OAuthStore extends AuthManage {
 	 */
 	public function adm_get_oauth_tokens(string $session_token) {
 		$this->init();
-		$sql = $this::$admin::$store;
+		$sql = self::$ctrl::$admin::$store;
 		$dtnow = $sql->stmt_fragment('datetime', ['delta' => 0]);
 		$stmt = (
 			"SELECT oname, otype, access, access_secret, refresh " .
@@ -248,7 +250,7 @@ abstract class OAuthStore extends AuthManage {
 		string $url_access=null,
 		string $scope=null, string $url_callback=null
 	) {
-		$logger = $this::$logger;
+		$logger = self::$ctrl::$logger;
 
 		if (!in_array($service_type, ['10', '20'])) {
 			$msg = "Invalid service type: '".$service_type."'.";
@@ -472,13 +474,11 @@ abstract class OAuthStore extends AuthManage {
 
 		# register passwordless
 
-		$retval = $this->self_add_passwordless($args);
-		// if ($retval[0] != 0)
-		// 	return $retval;
+		$retval = self::$manage->self_add_passwordless($args);
 		$udata = $retval[1];
 		$session_token = $udata['token'];
 
-		$sql = $this::$admin::$store;
+		$sql = self::$ctrl::$admin::$store;
 
 		# save additional udate from profile retriever if exists
 
