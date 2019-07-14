@@ -163,25 +163,25 @@ class OAuthRouteHTTP extends OAuthRoute {
 	}
 
 	public function route_status($args) {
-		$core = $this->core;
-		$udata = $this->adm_status();
+		$core = self::$core;
+		$udata = self::$ctrl->get_user_data();
 		if (!$udata)
 			return $core::pj([1, []], 403);
 		return $core::pj([0, $udata]);
 	}
 
 	public function route_logout($args=null) {
-		$core = $this->core;
-		$udata = $this->adm_status();
+		$core = self::$core;
+		$udata = self::$ctrl->get_user_data();
 		if (!$udata)
 			return $core::pj([1, []], 403);
-		$this->adm_logout();
+		self::$ctrl->logout();
 		return $core::pj([0, []]);
 	}
 
 	public function route_refresh($args=null) {
-		$core = $this->core;
-		$udata = $this->adm_status();
+		$core = self::$core;
+		$udata = self::$ctrl->get_user_data();
 		if (!$udata)
 			return $core::pj([1, []], 403);
 		$token = $udata['token'];
@@ -196,7 +196,7 @@ class OAuthRouteHTTP extends OAuthRoute {
 	}
 
 	public function route_static($args) {
-		return $this->core->static_file(
+		return self::$core->static_file(
 			__DIR__ . '/static/' . $args['params']['path']);
 	}
 
