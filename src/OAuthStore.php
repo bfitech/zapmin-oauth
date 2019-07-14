@@ -42,7 +42,7 @@ use BFITech\ZapOAuth\OAuth20Action;
  * @SuppressWarnings(PHPMD.LongVariable)
  * @endif
  */
-abstract class OAuthStore extends RouteDefault {
+abstract class OAuthStore extends Route {
 
 	/**
 	 * Service register.

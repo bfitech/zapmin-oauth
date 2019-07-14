@@ -4,12 +4,21 @@
 require(__DIR__ . '/../../vendor/autoload.php');
 
 
-use BFITech\ZapCommonDev\CommonDev;
 use BFITech\ZapCore\Logger;
 use BFITech\ZapCore\Router;
 use BFITech\ZapStore\SQLite3;
+use BFITech\ZapAdmin\Admin;
+use BFITech\ZapAdmin\AuthCtrl;
+use BFITech\ZapAdmin\AuthManage;
 use BFITech\ZapAdmin\OAuthRoute;
 
+
+function testdir() {
+	$dir = __DIR__ . '/testdata';
+	if (!is_dir($dir))
+		mkdir($dir, 0755);
+	return $dir;
+}
 
 class OAuthRouteHTTP extends OAuthRoute {
 
@@ -150,7 +159,7 @@ class OAuthRouteHTTP extends OAuthRoute {
 
 	public function route_home($args=null) {
 		require('home.php');
-		$this->core::halt();
+		self::$core::halt();
 	}
 
 	public function route_status($args) {
@@ -222,13 +231,22 @@ class Web {
 	private function prepare() {
 		# environment
 
-		$testdir = CommonDev::testdir(__DIR__);
+		$testdir = testdir();
 		$logger = new Logger(
 			Logger::DEBUG, $testdir . '/zapmin-oauth.log');
 		$core = (new Router)->config('logger', $logger);
 		$store = new SQLite3(
 			['dbname' => $testdir . '/zapmin-oauth.sq3'], $logger);
-		$adm = new OAuthRouteHTTP($store, $logger, null, $core);
+
+		$admin = new Admin($store, $logger);
+		$admin
+			->config('expire', 3600)
+			->config('token_name', 'testing')
+			->config('check_tables', true);
+		$ctrl = new AuthCtrl($admin, $logger);
+		$manage = new AuthManage($admin, $logger);
+
+		$adm = new OAuthRouteHTTP($core, $ctrl, $manage);
 
 		# config
 
@@ -258,4 +276,3 @@ class Web {
 }
 
 new Web;
-
