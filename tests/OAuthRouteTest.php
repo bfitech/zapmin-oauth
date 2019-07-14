@@ -70,13 +70,6 @@ class OAuthRoute20Patched extends OAuthRoutePatched {
 
 }
 
-function testdir() {
-	$dir = __DIR__ . '/testdata';
-	if (!is_dir($dir))
-		mkdir($dir, 0755);
-	return $dir;
-}
-
 class OAuthRouteTest extends TestCase {
 
 	public static $store;
@@ -84,13 +77,7 @@ class OAuthRouteTest extends TestCase {
 	public static $core;
 
 	public static function setUpBeforeClass() {
-		// self::$logger = new Logger(Logger::ERROR, '/dev/null');
-		$logfile = testdir() . '/zapmin-route.log';
-		if (file_exists($logfile))
-			unlink($logfile);
-		self::$logger = new Logger(
-			Logger::DEBUG, $logfile);
-
+		self::$logger = new Logger(Logger::ERROR, '/dev/null');
 		self::$store = new SQLite3(['dbname' => ':memory:'],
 			self::$logger);
 		self::$core = (new Router())->config('home', '/');
