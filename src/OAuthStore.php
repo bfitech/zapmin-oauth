@@ -63,10 +63,11 @@ abstract class OAuthStore extends Route {
 	private $initialized = false;
 
 	/**
-	 * Constructor.
+	 * Configure.
 	 *
-	 * @param SQL $store SQL instance.
-	 * @param Logger $logger Logger instance.
+	 * @param string $key Config key. Available key:
+	 *     `force_create_table`.
+	 * @param mixed $val Config value.
 	 */
 	public function config(string $key, string $val=null) {
 		switch ($key) {
@@ -74,26 +75,9 @@ abstract class OAuthStore extends Route {
 				$this->$key = (bool)$val;
 				break;
 		}
-		// parent::config($key, $val);
+		parent::config($key, $val);
 		return $this;
 	}
-
-	// /**
-	//  * Configure.
-	//  *
-	//  * @param string $key Config key. Available key:
-	//  *     `force_create_table`.
-	//  * @param mixed $val Config value.
-	//  */
-	// public function config(string $key, string $val=null) {
-	// 	switch ($key) {
-	// 		case 'force_create_table':
-	// 			$this->$key = (bool)$val;
-	// 			break;
-	// 	}
-	// 	parent::config($key, $val);
-	// 	return $this;
-	// }
 
 	/**
 	 * Initialize object.
@@ -322,37 +306,37 @@ abstract class OAuthStore extends Route {
 		return $perm;
 	}
 
-	// /**
-	//  * Finetune permission instance.
-	//  *
-	//  * Override this in a subclass to change, e.g.
-	//  * auth_basic_for_site_callback in OAuth2.0.
-	//  *
-	//  * @param dict $args Router HTTP variables.
-	//  * @param object $oauth_perm OAuth*Permission instance.
-	//  * @codeCoverageIgnore
-	//  *
-	//  * ### Example:
-	//  *
-	//  * @code
-	//  * class MyOAuthRoute extends OAuthRoute {
-	//  *     public function oauth_finetune_permission($args, $perm) {
-	//  *         if ($args['params'] == 'reddit')
-	//  *             $perm->auth_basic_for_site_callback = true;
-	//  *         return $perm;
-	//  *     }
-	//  * }
-	//  * @endcode
-	//  *
-	//  * @if TRUE
-	//  * @SuppressWarnings(PHPMD.UnusedFormalParameter)
-	//  * @endif
-	//  */
-	// public function oauth_finetune_permission(
-	// 	array $args, OAuthCommon $oauth_perm
-	// ) {
-	// 	return $oauth_perm;
-	// }
+	/**
+	 * Finetune permission instance.
+	 *
+	 * Override this in a subclass to change, e.g.
+	 * auth_basic_for_site_callback in OAuth2.0.
+	 *
+	 * @param dict $args Router HTTP variables.
+	 * @param object $oauth_perm OAuth*Permission instance.
+	 * @codeCoverageIgnore
+	 *
+	 * ### Example:
+	 *
+	 * @code
+	 * class MyOAuthRoute extends OAuthRoute {
+	 *     public function oauth_finetune_permission($args, $perm) {
+	 *         if ($args['params'] == 'reddit')
+	 *             $perm->auth_basic_for_site_callback = true;
+	 *         return $perm;
+	 *     }
+	 * }
+	 * @endcode
+	 *
+	 * @if TRUE
+	 * @SuppressWarnings(PHPMD.UnusedFormalParameter)
+	 * @endif
+	 */
+	public function oauth_finetune_permission(
+		array $args, OAuthCommon $oauth_perm
+	) {
+		return $oauth_perm;
+	}
 
 	/**
 	 * Instantiate OAuth*Action class.
@@ -402,38 +386,38 @@ abstract class OAuthStore extends Route {
 		return $act;
 	}
 
-	// /**
-	//  * Profile fetcher stub.
-	//  *
-	//  * Use this to populate user bio after user is successfully
-	//  * authenticated.
-	//  *
-	//  * @param object $oauth_action Instance of OAuth action.
-	//  * @param string $service_type Service type.
-	//  * @param string $service_name Service name.
-	//  * @param array $kwargs Additional arguments.
-	//  * @return On successful authentication, a dict of the
-	//  *     form:
-	//  *     @code
-	//  *     (dict){
-	//  *         'uname': (string)uname,
-	//  *         'fname': (optional string)fname,
-	//  *         'email': (optional string)email,
-	//  *         'site': (optional string)site,
-	//  *     }
-	//  *     @endcode
-	//  * @codeCoverageIgnore
-	//  *
-	//  * @if TRUE
-	//  * @SuppressWarnings(PHPMD.UnusedFormalParameter)
-	//  * @endif
-	//  */
-	// public function oauth_fetch_profile(
-	// 	OAuthCommon $oauth_action,
-	// 	string $service_type, string $service_name, array $kwargs=[]
-	// ) {
-	// 	return [];
-	// }
+	/**
+	 * Profile fetcher stub.
+	 *
+	 * Use this to populate user bio after user is successfully
+	 * authenticated.
+	 *
+	 * @param object $oauth_action Instance of OAuth action.
+	 * @param string $service_type Service type.
+	 * @param string $service_name Service name.
+	 * @param array $kwargs Additional arguments.
+	 * @return On successful authentication, a dict of the
+	 *     form:
+	 *     @code
+	 *     (dict){
+	 *         'uname': (string)uname,
+	 *         'fname': (optional string)fname,
+	 *         'email': (optional string)email,
+	 *         'site': (optional string)site,
+	 *     }
+	 *     @endcode
+	 * @codeCoverageIgnore
+	 *
+	 * @if TRUE
+	 * @SuppressWarnings(PHPMD.UnusedFormalParameter)
+	 * @endif
+	 */
+	public function oauth_fetch_profile(
+		OAuthCommon $oauth_action,
+		string $service_type, string $service_name, array $kwargs=[]
+	) {
+		return [];
+	}
 
 	/**
 	 * Add new user after successful authorization.

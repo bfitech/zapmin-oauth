@@ -104,7 +104,7 @@ WARN_LOGFILE           =
 # Configuration options related to the input files
 #---------------------------------------------------------------------------
 INPUT                  = src dev README.md \
-                         vendor/bfitech/zapmin/src/AdminRoute.php
+                         vendor/bfitech/zapmin/src/Route.php
 INPUT_ENCODING         = UTF-8
 FILE_PATTERNS          = *.php
 RECURSIVE              = YES

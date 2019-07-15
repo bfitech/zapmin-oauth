@@ -12,7 +12,7 @@ use BFITech\ZapOAuth\OAuthError;
  * OAuthRoute class.
  *
  * @see ./tests/htdocs-test/index for usage.
- * @see AdminRoute.
+ * @see Route.
  */
 class OAuthRoute extends OAuthStore {
 
