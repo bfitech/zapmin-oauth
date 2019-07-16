@@ -1,16 +1,16 @@
 <?php
 
 
-use PHPUnit\Framework\TestCase;
 use BFITech\ZapCore\Logger;
 use BFITech\ZapStore\SQLite3;
 use BFITech\ZapAdmin\Admin;
 use BFITech\ZapAdmin\AuthCtrl;
-use BFITech\ZapAdmin\AuthManage;
+use BFITech\ZapAdmin\OAuthManage;
 use BFITech\ZapAdminDev\OAuthRouteDev;
 use BFITech\ZapCoreDev\RouterDev;
 use BFITech\ZapCoreDev\RoutingDev;
 use BFITech\ZapOAuth\OAuthError;
+use BFITech\ZapCoreDev\TestCase;
 
 
 class OAuthRouteDevTest extends TestCase {
@@ -23,25 +23,21 @@ class OAuthRouteDevTest extends TestCase {
 		self::$logger = new Logger(Logger::ERROR, '/dev/null');
 		self::$store = new SQLite3(['dbname' => ':memory:'],
 			self::$logger);
-		self::$core = (new RouterDev())->config('home', '/');
+		self::$core = (new RouterDev())
+			->config('home', '/')
+			->config('logger', self::$logger);
 	}
 
 	private function create_route() {
-		$store = new SQLite3(
-			['dbname' => ':memory:'], self::$logger);
-		$core = (new RouterDev())
-			->config('logger', self::$logger);
-		$admin = new Admin($store, self::$logger);
+		$admin = new Admin(self::$store, self::$logger);
 		$admin
 			->config('expire', 3600)
 			->config('token_name', 'testing')
 			->config('check_tables', true);
 		$ctrl = new AuthCtrl($admin, self::$logger);
-		$manage = new AuthManage($admin, self::$logger);
-		$adm = new OAuthRouteDev($core, $ctrl, $manage);
+		$manage = new OAuthManage($admin, self::$logger);
 
-		// $adm->adm_set_token_name('testing');
-		$adm->oauth_add_service(
+		$manage->add_service(
 			'10', 'twitter',
 			'test-consumer-key', 'test-consumer-secret',
 			'http://twitter.example.org/10/auth_request',
@@ -49,7 +45,7 @@ class OAuthRouteDevTest extends TestCase {
 			'http://twitter.example.org/10/access',
 			null, 'http://localhost'
 		);
-		$adm->oauth_add_service(
+		$manage->add_service(
 			'20', 'tumblr',
 			'test-consumer-key', 'test-consumer-secret',
 			'http://tumblr.example.org/10/auth_request',
@@ -57,80 +53,88 @@ class OAuthRouteDevTest extends TestCase {
 			'http://tumblr.example.org/10/access',
 			null, 'http://localhost'
 		);
-		$adm->oauth_callback_ok_redirect = '/ok';
-		return $adm;
+		$manage->callback_ok_redirect = '/ok';
+		return new OAuthRouteDev(self::$core, $ctrl, $manage);
 	}
 
 	public function test_fake_login() {
-		$adm = $this->create_route();
-		$core = $adm::$core;
+		extract(self::vars());
+
+		$router = $this->create_route();
+		$manage = $router::$manage;
+		$core = $router::$core;
 		$rdev = new RoutingDev($core);
 
-		$rdev->request('/oauth/10/github/auth');
-		$adm->route('/oauth/<service_type>/<service_name>/auth',
-			[$adm, 'route_fake_login']);
-		$this->assertEquals($core::$code, 404);
+		$rdev
+			->request('/oauth/10/github/auth')
+			->route('/oauth/<service_type>/<service_name>/auth',
+				[$router, 'route_fake_login']);
+		$eq($core::$code, 404);
 
 		if (!defined('ZAPMIN_OAUTH_DEV'))
 			define('ZAPMIN_OAUTH_DEV', 1);
 
-		$rdev->request('/oauth/10/github/auth');
-		$adm->route('/oauth/<service_type>/<service_name>/auth',
-			[$adm, 'route_fake_login']);
-		$this->assertEquals($core::$code, 403);
-		$this->assertEquals($core::$body['errno'],
-			OAuthError::INCOMPLETE_DATA);
+		$rdev
+			->request('/oauth/10/github/auth')
+			->route('/oauth/<service_type>/<service_name>/auth',
+				[$router, 'route_fake_login']);
+		$eq($core::$code, 403);
+		$eq($core::$errno, OAuthError::INCOMPLETE_DATA);
 
-		$rdev->request('/oauth/10/github/auth');
-		$adm->route('/oauth/<service_type>/github/auth',
-			[$adm, 'route_fake_login']);
-		$this->assertEquals($core::$code, 404);
-		$this->assertEquals($core::$body['errno'],
-			OAuthError::SERVICE_UNKNOWN);
+		$rdev
+			->request('/oauth/10/github/auth')
+			->route('/oauth/<service_type>/github/auth',
+				[$router, 'route_fake_login']);
+		$eq($core::$code, 404);
+		$eq($core::$errno, OAuthError::SERVICE_UNKNOWN);
 
-		$rdev->request('/oauth/10/github/auth', 'GET',
-			['get' => ['email' => 'me@github.io']]);
-		$adm->route('/oauth/<service_type>/<service_name>/auth',
-			[$adm, 'route_fake_login']);
-		$this->assertEquals($core::$code, 404);
-		$this->assertEquals($core::$body['errno'],
-			OAuthError::SERVICE_UNKNOWN);
+		$rdev
+			->request('/oauth/10/github/auth', 'GET',
+				['get' => ['email' => 'me@github.io']])
+			->route('/oauth/<service_type>/<service_name>/auth',
+				[$router, 'route_fake_login']);
+		$eq($core::$code, 404);
+		$eq($core::$errno, OAuthError::SERVICE_UNKNOWN);
 
-		$rdev->request('/oauth/10/github/auth', 'GET',
-			['get' => ['email' => 'me+github.io']]);
-		$adm->route('/oauth/<service_type>/<service_name>/auth',
-			[$adm, 'route_fake_login']);
-		$this->assertEquals($core::$code, 403);
-		$this->assertEquals($core::$body['errno'],
-			OAuthError::INCOMPLETE_DATA);
+		$rdev
+			->request('/oauth/10/github/auth', 'GET',
+				['get' => ['email' => 'me+github.io']])
+			->route('/oauth/<service_type>/<service_name>/auth',
+				[$router, 'route_fake_login']);
+		$eq($core::$code, 403);
+		$eq($core::$errno, OAuthError::INCOMPLETE_DATA);
 
-		$rdev->request('/oauth/20/tumblr/auth', 'GET',
-			['get' => ['email' => 'me@github.io']]);
-		$adm->route('/oauth/<service_type>/<service_name>/auth',
-			[$adm, 'route_fake_login']);
-		$this->assertEquals($core::$code, 404);
-		$this->assertEquals($core::$body['errno'],
-			OAuthError::SERVICE_UNKNOWN);
+		$rdev
+			->request('/oauth/20/tumblr/auth', 'GET',
+				['get' => ['email' => 'me@github.io']])
+			->route('/oauth/<service_type>/<service_name>/auth',
+				[$router, 'route_fake_login']);
+		$eq($core::$code, 404);
+		$eq($core::$errno, OAuthError::SERVICE_UNKNOWN);
 
-		$rdev->request('/oauth/20/tumblr/auth', 'GET',
-			['get' => ['email' => 'me@tumblr.xyz']]);
-		$adm->route('/oauth/<service_type>/<service_name>/auth',
-			[$adm, 'route_fake_login']);
-		$this->assertEquals($core::$code, 301);
-		$this->assertEquals($core::$head[0], 'Location: /ok');
+		$rdev
+			->request('/oauth/20/tumblr/auth', 'GET',
+				['get' => ['email' => 'me@tumblr.xyz']])
+			->route('/oauth/<service_type>/<service_name>/auth',
+				[$router, 'route_fake_login']);
+		$eq($core::$code, 301);
+		$eq($core::$head[0], 'Location: /ok');
 
-		$rdev->request('/oauth/20/tumblr/auth', 'GET',
-			['get' => ['email' => 'me@tumblr.xyz']],
-			['testing' => $_COOKIE['testing']]
-		);
-		$adm->route('/oauth/<service_type>/<service_name>/auth',
-			[$adm, 'route_fake_login']);
-		$this->assertEquals($core::$code, 401);
+		$rdev
+			->request('/oauth/20/tumblr/auth', 'GET', [
+				'get' => ['email' => 'me@tumblr.xyz']
+			], [
+				'testing' => $_COOKIE['testing'],
+			])
+			->route('/oauth/<service_type>/<service_name>/auth',
+				[$router, 'route_fake_login']);
+		$eq($core::$code, 401);
 
-		$rdev->request('/status', 'GET', [], [
-			['testing' => $_COOKIE['testing']]
-		]);
-		$adm->route('/status', [$adm, 'route_fake_status']);
-		$this->assertEquals($core::$data['email'], 'me@tumblr.xyz');
+		$rdev
+			->request('/status', 'GET', null, [
+				'testing' => $_COOKIE['testing'],
+			])
+			->route('/status', [$router, 'route_fake_status']);
+		$eq($core::$data['email'], 'me@tumblr.xyz');
 	}
 }

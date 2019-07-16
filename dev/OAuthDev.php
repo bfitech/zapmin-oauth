@@ -6,13 +6,13 @@ namespace BFITech\ZapAdminDev;
 
 use BFITech\ZapCore\Common;
 use BFITech\ZapOAuth\OAuthError;
-use BFITech\ZapAdmin\OAuthRoute;
+use BFITech\ZapAdmin\OAuthRouteDefault;
 
 
 /**
  * OAuth routing for development.
  */
-class OAuthRouteDev extends OAuthRoute {
+class OAuthRouteDev extends OAuthRouteDefault {
 
 	/**
 	 * Fake login.
@@ -33,6 +33,7 @@ class OAuthRouteDev extends OAuthRoute {
 	 */
 	public function route_fake_login(array $args) {
 		$core = self::$core;
+		$manage = self::$manage;
 
 		# safeguard so that this won't leak to production
 		if (!defined('ZAPMIN_OAUTH_DEV'))
@@ -49,6 +50,7 @@ class OAuthRouteDev extends OAuthRoute {
 
 		if (self::$ctrl->get_user_data())
 			return $core::pj([1], 401);
+
 		if (!isset($args['get']['email']))
 			return $core::pj([OAuthError::INCOMPLETE_DATA], 403);
 		$email = $args['get']['email'];
@@ -60,7 +62,7 @@ class OAuthRouteDev extends OAuthRoute {
 		if (strpos($email, $service_name) === false)
 			return $core::pj([OAuthError::SERVICE_UNKNOWN], 404);
 
-		$perm = $this->oauth_get_permission_instance(
+		$perm = $manage->get_permission_instance(
 			$service_type, $service_name);
 		if (!$perm)
 			# service unknown
@@ -71,7 +73,7 @@ class OAuthRouteDev extends OAuthRoute {
 		$access_token_secret = $service_type != '10' ? null :
 			$access_token_secret = "xxx-" . $access_token;
 		// @codeCoverageIgnoreStart
-		$token = $this->oauth_add_user(
+		$token = $manage->add_user(
 			$service_type, $service_name,
 			$uname, $access_token, $access_token_secret, null,
 			[
@@ -80,12 +82,11 @@ class OAuthRouteDev extends OAuthRoute {
 			]
 		);
 		// @codeCoverageIgnoreEnd
+		self::$ctrl->set_token_value($token);
 
 		$core::send_cookie(
-			$this->token_name, $token,
-			time() + (3600 * 6), '/');
-		$redirect = $this->oauth_callback_ok_redirect ?
-			$this->oauth_callback_ok_redirect : '/';
+			$this->token_name, $token, time() + (3600 * 6), '/');
+		$redirect = $manage->callback_ok_redirect ?? '/';
 		$core->redirect($redirect);
 	}
 

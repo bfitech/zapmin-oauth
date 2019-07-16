@@ -42,7 +42,7 @@ use BFITech\ZapOAuth\OAuth20Action;
  * @SuppressWarnings(PHPMD.LongVariable)
  * @endif
  */
-abstract class OAuthStore extends Route {
+class OAuthManage extends AuthManage {
 
 	/**
 	 * Service register.
@@ -50,14 +50,14 @@ abstract class OAuthStore extends Route {
 	 * Services are stored in a dict with keys of the form:
 	 * $service_name . '-' . $service_type.
 	 */
-	private $oauth_service_configs = [];
+	private $service_configs = [];
 
 	// There's no default facility to change these by default.
 	// Only subclass can take advantage of this.
 	/** Redirect URL after successful callback. */
-	public $oauth_callback_ok_redirect = null;
+	public $callback_ok_redirect = null;
 	/** Redirect URL after failed callback. */
-	public $oauth_callback_fail_redirect = null;
+	public $callback_fail_redirect = null;
 
 	private $force_create_table = false;
 	private $initialized = false;
@@ -88,7 +88,7 @@ abstract class OAuthStore extends Route {
 		if ($this->initialized)
 			return $this;
 		$this->initialized = true;
-		self::$ctrl::$admin->init();
+		self::$admin->init();
 		$this->oauth_create_table();
 		return $this;
 	}
@@ -114,8 +114,8 @@ abstract class OAuthStore extends Route {
 	 * and use them for request or refresh.
 	 */
 	private function oauth_create_table() {
-		$sql = self::$ctrl::$admin::$store;
-		$logger = self::$ctrl::$logger;
+		$sql = self::$admin::$store;
+		$log = self::$logger;
 
 		try {
 			$sql->query("SELECT 1 FROM uoauth");
@@ -131,20 +131,19 @@ abstract class OAuthStore extends Route {
 			// @codeCoverageIgnoreStart
 			if (!$sql->query_raw($drop)) {
 				$msg = "Cannot drop data:" . $sql->errmsg;
-				$logger->error("OAuth: $msg");
+				$log->error("OAuth: $msg");
 				throw new OAuthStoreError($msg);
 			}
 			// @codeCoverageIgnoreEnd
 		}
 
-		$index = $sql->stmt_fragment('index');
-		$engine = $sql->stmt_fragment('engine');
-
 		# token table
 
+		$index = $sql->stmt_fragment('index');
+		$engine = $sql->stmt_fragment('engine');
 		# Each row is associated with a session.sid. Associate the
 		# two tables with $this->store->status() return value.
-		$oauth_table = ("
+		$table = sprintf("
 			CREATE TABLE uoauth (
 				aid %s,
 				sid INTEGER REFERENCES usess(sid) ON DELETE CASCADE,
@@ -154,19 +153,18 @@ abstract class OAuthStore extends Route {
 				access_secret TEXT,    -- OAuth1.0 only
 				refresh TEXT           -- OAuth2.0 only
 			) %s;
-		");
-		$oauth_table = sprintf($oauth_table, $index, $engine);
-		if (!$sql->query_raw($oauth_table)) {
+		", $index, $engine);
+		if (!$sql->query_raw($table)) {
 			// @codeCoverageIgnoreStart
 			$msg = "Cannot create uoauth table:" . $sql->errmsg;
-			$logger->error("OAuth: $msg");
+			$log->error("OAuth: $msg");
 			throw new OAuthStoreError($msg);
 			// @codeCoverageIgnoreEnd
 		}
 
 		# session view
 
-		$oauth_session_view = ("
+		$session_view = ("
 			CREATE VIEW v_uoauth AS
 				SELECT
 					uoauth.*,
@@ -177,7 +175,7 @@ abstract class OAuthStore extends Route {
 					uoauth.sid=usess.sid;
 		");
 		// @codeCoverageIgnoreStart
-		if (!$sql->query_raw($oauth_session_view)) {
+		if (!$sql->query_raw($session_view)) {
 			$msg = "Cannot create v_oauth view:" . $sql->errmsg;
 			$logger->error("OAuth: $msg");
 			throw new OAuthStoreError($msg);
@@ -192,17 +190,16 @@ abstract class OAuthStore extends Route {
 	 * @return dict|null Dict of tokens and oauth information of
 	 *     current service.
 	 */
-	public function adm_get_oauth_tokens(string $session_token) {
+	public function get_oauth_tokens(string $session_token) {
 		$this->init();
-		$sql = self::$ctrl::$admin::$store;
+		$sql = self::$admin::$store;
 		$dtnow = $sql->stmt_fragment('datetime', ['delta' => 0]);
-		$stmt = (
-			"SELECT oname, otype, access, access_secret, refresh " .
-			"FROM v_uoauth " .
-			"WHERE token=? AND expire>%s " .
-			"ORDER BY sid DESC LIMIT 1"
-		);
-		$stmt = sprintf($stmt, $dtnow);
+		$stmt = sprintf("
+			SELECT oname, otype, access, access_secret, refresh
+			FROM v_uoauth 
+			WHERE token=? AND expire>%s
+			ORDER BY sid DESC LIMIT 1
+		", $dtnow);
 		$result = $sql->query($stmt, [$session_token]);
 		if ($result)
 			return $result;
@@ -227,29 +224,29 @@ abstract class OAuthStore extends Route {
 	 *     register in there, or else, they will return error at
 	 *     site callback.
 	 */
-	public function oauth_add_service(
+	public function add_service(
 		string $service_type, string $service_name,
 		string $consumer_key=null, string $consumer_secret=null,
 		string $url_token=null, string $url_token_auth=null,
 		string $url_access=null,
 		string $scope=null, string $url_callback=null
 	) {
-		$logger = self::$ctrl::$logger;
+		$log = self::$logger;
 
 		if (!in_array($service_type, ['10', '20'])) {
 			$msg = "Invalid service type: '".$service_type."'.";
-			$logger->error($msg);
+			$log->error($msg);
 			throw new OAuthError($msg);
 		}
 
 		$key = $service_name . '-' . $service_type;
-		if (isset($this->oauth_service_configs[$key])) {
+		if (isset($this->service_configs[$key])) {
 			$msg = "Missing configurations";
-			$logger->error("OAuth: $msg");
+			$log->error("OAuth: $msg");
 			return false;
 		}
 
-		$this->oauth_service_configs[$key] = [
+		$conf = $this->service_configs[$key] = [
 			'consumer_key' => $consumer_key,
 			'consumer_secret' => $consumer_secret,
 			'service_type' => $service_type,
@@ -260,6 +257,7 @@ abstract class OAuthStore extends Route {
 			'url_callback' => $url_callback,
 			'scope' => $scope,                  # 2.0 only
 		];
+		$log->debug("OAuth: Add new service: " . json_encode($conf));
 	}
 
 	# super-oauth methods
@@ -270,11 +268,11 @@ abstract class OAuthStore extends Route {
 	 * @param string $service_type Service type.
 	 * @param string $service_name Service name.
 	 */
-	public function oauth_get_permission_instance(
+	public function get_permission_instance(
 		string $service_type, string $service_name
 	) {
 		$key = $service_name . '-' . $service_type;
-		if (!isset($this->oauth_service_configs[$key]))
+		if (!isset($this->service_configs[$key]))
 			# key invalid
 			return null;
 
@@ -283,7 +281,7 @@ abstract class OAuthStore extends Route {
 		$url_access_token = $url_callback = null;
 		$scope = null;
 
-		$conf = $this->oauth_service_configs[$key];
+		$conf = $this->service_configs[$key];
 		extract($conf);
 		// @codeCoverageIgnoreStart
 		$perm = $service_type == '10' ?
@@ -332,7 +330,7 @@ abstract class OAuthStore extends Route {
 	 * @SuppressWarnings(PHPMD.UnusedFormalParameter)
 	 * @endif
 	 */
-	public function oauth_finetune_permission(
+	public function finetune_permission(
 		array $args, OAuthCommon $oauth_perm
 	) {
 		return $oauth_perm;
@@ -355,16 +353,16 @@ abstract class OAuthStore extends Route {
 	 * @param string $refresh_token Refresh token returned by
 	 *     $this->route_byway_callback() or retrieved. OAuth2.0 only.
 	 */
-	public function oauth_get_action_instance(
+	public function get_action_instance(
 		string $service_type, string $service_name,
 		string $access_token, string $access_token_secret=null,
 		string $refresh_token=null
 	) {
 		$key = $service_name . '-' . $service_type;
-		if (!isset($this->oauth_service_configs[$key]))
+		if (!isset($this->service_configs[$key]))
 			# key invalid
 			return null;
-		$conf = $this->oauth_service_configs[$key];
+		$conf = $this->service_configs[$key];
 		extract($conf);
 		// @codeCoverageIgnoreStart
 		$act = $service_type == '10' ?
@@ -412,7 +410,7 @@ abstract class OAuthStore extends Route {
 	 * @SuppressWarnings(PHPMD.UnusedFormalParameter)
 	 * @endif
 	 */
-	public function oauth_fetch_profile(
+	public function fetch_profile(
 		OAuthCommon $oauth_action,
 		string $service_type, string $service_name, array $kwargs=[]
 	) {
@@ -438,7 +436,7 @@ abstract class OAuthStore extends Route {
 	 *
 	 * @return string Session token.
 	 */
-	protected function oauth_add_user(
+	public function add_user(
 		string $service_type, string $service_name, string $uname,
 		string $access_token, string $access_token_secret=null,
 		string $refresh_token=null, array $profile=[]
@@ -458,11 +456,11 @@ abstract class OAuthStore extends Route {
 
 		# register passwordless
 
-		$retval = self::$manage->self_add_passwordless($args);
+		$retval = $this->self_add_passwordless($args);
 		$udata = $retval[1];
 		$session_token = $udata['token'];
 
-		$sql = self::$ctrl::$admin::$store;
+		$sql = self::$admin::$store;
 
 		# save additional udate from profile retriever if exists
 
@@ -510,14 +508,12 @@ abstract class OAuthStore extends Route {
 	 * @param string $session_token Session token received by
 	 *     cookie or request header.
 	 */
-	public function oauth_get_action_from_session(
-		string $session_token
-	) {
+	public function get_action_from_session(string $session_token) {
 		$this->init();
-		$tokens = $this->adm_get_oauth_tokens($session_token);
+		$tokens = $this->get_oauth_tokens($session_token);
 		if (!$tokens)
 			return null;
-		return $this->oauth_get_action_instance(
+		return $this->get_action_instance(
 			$tokens['otype'], $tokens['oname'], $tokens['access'],
 			$tokens['access_secret'], $tokens['refresh']
 		);
