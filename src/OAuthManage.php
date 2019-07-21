@@ -44,67 +44,12 @@ use BFITech\ZapOAuth\OAuth20Action;
  */
 class OAuthManage extends AuthManage {
 
-	/**
-	 * Service register.
-	 *
-	 * Services are stored in a dict with keys of the form:
-	 * $service_name . '-' . $service_type.
-	 */
-	private $service_configs = [];
-
 	// There's no default facility to change these by default.
 	// Only subclass can take advantage of this.
 	/** Redirect URL after successful callback. */
 	public $callback_ok_redirect = null;
 	/** Redirect URL after failed callback. */
 	public $callback_fail_redirect = null;
-
-	private $force_create_table = false;
-	private $initialized = false;
-
-	/**
-	 * Configure.
-	 *
-	 * @param string $key Config key. Available key:
-	 *     `force_create_table`.
-	 * @param mixed $val Config value.
-	 */
-	public function config(string $key, string $val=null) {
-		switch ($key) {
-			case 'force_create_table':
-				$this->$key = (bool)$val;
-				break;
-		}
-		parent::config($key, $val);
-		return $this;
-	}
-
-	/**
-	 * Initialize object.
-	 *
-	 * This primarily sets up tables.
-	 */
-	public function init() {
-		if ($this->initialized)
-			return $this;
-		$this->initialized = true;
-		self::$admin->init();
-		$this->oauth_create_table();
-		return $this;
-	}
-
-	/**
-	 * Deinitialize object.
-	 *
-	 * Mostly useful in tests.
-	 */
-	public function deinit() {
-		if (!$this->initialized)
-			return $this;
-		$this->initialized = false;
-		// parent::deinit();
-		return $this;
-	}
 
 	/**
 	 * Create OAuth session table.
@@ -119,8 +64,7 @@ class OAuthManage extends AuthManage {
 
 		try {
 			$sql->query("SELECT 1 FROM uoauth");
-			if (!$this->force_create_table)
-				return;
+			return;
 		} catch (SQLError $e) {
 		}
 
@@ -177,7 +121,7 @@ class OAuthManage extends AuthManage {
 		// @codeCoverageIgnoreStart
 		if (!$sql->query_raw($session_view)) {
 			$msg = "Cannot create v_oauth view:" . $sql->errmsg;
-			$logger->error("OAuth: $msg");
+			$log->error("OAuth: $msg");
 			throw new OAuthStoreError($msg);
 		}
 		// @codeCoverageIgnoreEnd
@@ -191,12 +135,12 @@ class OAuthManage extends AuthManage {
 	 *     current service.
 	 */
 	public function get_oauth_tokens(string $session_token) {
-		$this->init();
+		$this->oauth_create_table();
 		$sql = self::$admin::$store;
 		$dtnow = $sql->stmt_fragment('datetime', ['delta' => 0]);
 		$stmt = sprintf("
 			SELECT oname, otype, access, access_secret, refresh
-			FROM v_uoauth 
+			FROM v_uoauth
 			WHERE token=? AND expire>%s
 			ORDER BY sid DESC LIMIT 1
 		", $dtnow);
@@ -441,7 +385,7 @@ class OAuthManage extends AuthManage {
 		string $access_token, string $access_token_secret=null,
 		string $refresh_token=null, array $profile=[]
 	) {
-		$this->init();
+		$this->oauth_create_table();
 
 		# build passwordless account using obtained uname with uservice
 		# having the form 'oauth%service_type%[%service_name%]
@@ -509,7 +453,7 @@ class OAuthManage extends AuthManage {
 	 *     cookie or request header.
 	 */
 	public function get_action_from_session(string $session_token) {
-		$this->init();
+		$this->oauth_create_table();
 		$tokens = $this->get_oauth_tokens($session_token);
 		if (!$tokens)
 			return null;
