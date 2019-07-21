@@ -19,7 +19,13 @@ use BFITech\ZapOAuth\OAuthError;
  */
 class OAuthRouteDefault extends Route {
 
-
+	/**
+	 * Constructor.
+	 *
+	 * @param Router $core Router instance.
+	 * @param AuthCtrl $ctrl AuthCtrl instance.
+	 * @param AuthManage $manage AuthManage instance.
+	 */
 	public function __construct(
 		Router $core, AuthCtrl $ctrl, OAuthManage $manage
 	) {
@@ -32,7 +38,7 @@ class OAuthRouteDefault extends Route {
 	 * @param array $args Router variables. This must contain sub-keys:
 	 *     `service_type` and `service_name` in `params` key.
 	 */
-	public function route_byway_auth($args) {
+	public function route_byway_auth(array $args) {
 		$service_type = $service_name = null;
 		$core = self::$core;
 		$params = $args['params'];
@@ -86,7 +92,7 @@ class OAuthRouteDefault extends Route {
 	 *     }
 	 *     @endcode
 	 */
-	public function route_byway_callback($args) {
+	public function route_byway_callback(array $args) {
 
 		$core = self::$core;
 		$manage = self::$manage;
@@ -148,7 +154,6 @@ class OAuthRouteDefault extends Route {
 		$log->debug(sprintf(
 			"ZapOAuth: fetch profile : %s.", json_encode($profile)));
 		$uname = $profile['uname'];
-
 
 		// @codeCoverageIgnoreStart
 		$session_token = $manage->add_user(
