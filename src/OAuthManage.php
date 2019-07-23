@@ -17,15 +17,13 @@ use BFITech\ZapOAuth\OAuth20Action;
 
 
 /**
- * OAuthStore class.
- *
- * This only deals with storage. Routing activities are in OAuthRoute.
+ * Manage class.
  *
  * General workflow:
  *
- * 1. Extend this class, e.g. OAuthRouteCustom, with method
+ * 1. Extend this class, e.g. OAuthManageCustom, with method
  *    oauth_fetch_profile() overridden.
- * 2. Instantiate OAuthRouteCustom $so, let's call this
+ * 2. Instantiate OAuthManageCustom $so, let's call this
  *    super-oauth.
  * 3. Register services with $so->oauth_add_service() with
  *    appropriate configuration.
