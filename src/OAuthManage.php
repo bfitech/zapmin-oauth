@@ -22,16 +22,16 @@ use BFITech\ZapOAuth\OAuth20Action;
  * General workflow:
  *
  * 1. Extend this class, e.g. OAuthManageCustom, with method
- *    oauth_fetch_profile() overridden.
+ *    fetch_profile() overridden.
  * 2. Instantiate OAuthManageCustom $so, let's call this
  *    super-oauth.
- * 3. Register services with $so->oauth_add_service() with
+ * 3. Register services with $so->add_service() with
  *    appropriate configuration.
- * 4. Use $perm = $so->oauth_get_permission_instance() that will
+ * 4. Use $perm = $so->get_permission_instance() that will
  *    initiate sequence of acquiring access token, along with
  *    access token secret for OAuth1 and refresh token for OAuth2.
  * 5. When access token is obtained, use it to make API calls
- *    with $act = $so->oauth_get_action_instance(). $act->request()
+ *    with $act = $so->get_action_instance(). $act->request()
  *    wraps regular API calls. Especially for OAuth2, there is
  *    $act->refresh() that requests access token given a
  *    previously-obtained refresh token.
@@ -260,7 +260,7 @@ class OAuthManage extends AuthManage {
 	 *
 	 * @code
 	 * class MyOAuthRoute extends OAuthRoute {
-	 *     public function oauth_finetune_permission($args, $perm) {
+	 *     public function finetune_permission($args, $perm) {
 	 *         if ($args['params'] == 'reddit')
 	 *             $perm->auth_basic_for_site_callback = true;
 	 *         return $perm;
@@ -273,7 +273,7 @@ class OAuthManage extends AuthManage {
 	 * @endif
 	 */
 	public function finetune_permission(
-		array $args, OAuthCommon $oauth_perm
+		array $args, _Common $oauth_perm
 	) {
 		return $oauth_perm;
 	}
@@ -368,13 +368,13 @@ class OAuthManage extends AuthManage {
 	 * @param string $service_type '10' for OAuth1, '20' for OAuth2.
 	 * @param string $service_name Service nickname, e.g. 'github'.
 	 * @param string $uname Username obtained by
-	 *     successful $this->oauth_fetch_profile().
+	 *     successful $this->fetch_profile().
 	 * @param string $access_token Access token.
 	 * @param string $access_token_secret Access token secret, OAuth1
 	 *     only.
 	 * @param string $refresh_token Refresh token, OAuth2 only.
 	 * @param array $profile Additional profile dict obtained by
-	 *     successful $this->oauth_fetch_profile().
+	 *     successful $this->fetch_profile().
 	 *
 	 * @return string Session token.
 	 */
