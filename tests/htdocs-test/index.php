@@ -9,8 +9,8 @@ use BFITech\ZapCore\Router;
 use BFITech\ZapStore\SQLite3;
 use BFITech\ZapAdmin\Admin;
 use BFITech\ZapAdmin\AuthCtrl;
-use BFITech\ZapAdmin\AuthManage;
-use BFITech\ZapAdmin\OAuthRoute;
+use BFITech\ZapAdmin\OAuthManage;
+use BFITech\ZapAdmin\OAuthRouteDefault;
 
 
 function testdir() {
@@ -19,8 +19,10 @@ function testdir() {
 		mkdir($dir, 0755);
 	return $dir;
 }
-
-class OAuthRouteHTTP extends OAuthRoute {
+/**
+ *
+ */
+class OAuthManagePatched extends OAuthManage {
 
 	private function fetch_profile_google($oauth_action) {
 		# make request
@@ -54,7 +56,7 @@ class OAuthRouteHTTP extends OAuthRoute {
 		return $profile;
 	}
 
-	public function oauth_finetune_permission($args, $perm) {
+	public function finetune_permission($args, $perm) {
 		# to obtain google refresh token, we needs to provide
 		# `access_type=offline&prompt=consent`
 		# see: http://archive.fo/L3bXg#selection-1259.0-1279.18
@@ -145,7 +147,7 @@ class OAuthRouteHTTP extends OAuthRoute {
 		return $profile;
 	}
 
-	public function oauth_fetch_profile(
+	public function fetch_profile(
 		$oauth_action, $service_type, $service_name, $kwargs=[]
 	) {
 		if ($service_name == 'google')
@@ -156,6 +158,10 @@ class OAuthRouteHTTP extends OAuthRoute {
 			return $this->fetch_profile_twitter($oauth_action);
 		return [];
 	}
+}
+
+
+class OAuthRouteHTTP extends OAuthRouteDefault {
 
 	public function route_home($args=null) {
 		require('home.php');
@@ -244,7 +250,7 @@ class Web {
 			->config('token_name', 'testing')
 			->config('check_tables', true);
 		$ctrl = new AuthCtrl($admin, $logger);
-		$manage = new AuthManage($admin, $logger);
+		$manage = new OAuthManagePatched($admin, $logger);
 
 		$adm = new OAuthRouteHTTP($core, $ctrl, $manage);
 
@@ -269,7 +275,7 @@ class Web {
 		# Make sure callback URLs in the configuration and on
 		# remote server match.
 		foreach ($config as $cfg)
-			call_user_func_array([$adm, 'oauth_add_service'], $cfg);
+			call_user_func_array([$manage, 'add_service'], $cfg);
 
 		return $adm;
 	}

@@ -54,7 +54,7 @@ class OAuthRouteDefault extends Route {
 		if (!$perm)
 			# service unknown
 			return $core::pj([OAuthError::SERVICE_UNKNOWN], 404);
-		$perm = $this->finetune_permission($args, $perm);
+		$perm = self::$manage->finetune_permission($args, $perm);
 
 		$url = $perm->get_access_token_url();
 		if (!$url)
