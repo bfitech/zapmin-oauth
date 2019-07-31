@@ -273,7 +273,7 @@ class OAuthManage extends AuthManage {
 	 * @endif
 	 */
 	public function finetune_permission(
-		array $args, _Common $oauth_perm
+		array $args, OAuthCommon $oauth_perm
 	) {
 		return $oauth_perm;
 	}
