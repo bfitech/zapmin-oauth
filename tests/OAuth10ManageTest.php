@@ -209,6 +209,14 @@ class OAuth10Test extends TestCase {
 		]);
 		$data = json_decode($rv[1], true);
 		$eq($data['uname'], 'john');
+
+		# request by adding a query
+		$rv = $act->request([
+			'method' => 'GET',
+			'url' => 'http://twitter.example.org/10/api/me?q=1'
+		]);
+		$data = json_decode($rv[1], true);
+		$eq($data['uname'], 'john');
 	}
 
 }
