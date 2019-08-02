@@ -56,19 +56,6 @@ class OAuthManagePatched extends OAuthManage {
 		return $profile;
 	}
 
-	public function finetune_permission($args, $perm) {
-		# to obtain google refresh token, we needs to provide
-		# `access_type=offline&prompt=consent`
-		# see: http://archive.fo/L3bXg#selection-1259.0-1279.18
-		if ($args['params']['service_name'] == 'google') {
-			$perm->access_token_url_extra_params = [
-				'access_type' => 'offline',
-				'prompt' => 'consent',
-			];
-		}
-		return $perm;
-	}
-
 	private function fetch_profile_github($oauth_action) {
 		# github needs UA
 		$headers = ['User-Agent: curl/7.47.0'];
@@ -158,6 +145,20 @@ class OAuthManagePatched extends OAuthManage {
 			return $this->fetch_profile_twitter($oauth_action);
 		return [];
 	}
+
+	public function finetune_permission($args, $perm) {
+		# to obtain google refresh token, we needs to provide
+		# `access_type=offline&prompt=consent`
+		# see: http://archive.fo/L3bXg#selection-1259.0-1279.18
+		if ($args['params']['service_name'] == 'google') {
+			$perm->access_token_url_extra_params = [
+				'access_type' => 'offline',
+				'prompt' => 'consent',
+			];
+		}
+		return $perm;
+	}
+
 }
 
 

@@ -34,6 +34,21 @@ class OAuthRoute extends OAuthRouteDefault {
 	/** Service type, for fixture selection. */
 	public static $service_type;
 
+	/** Service fixture. */
+	public function http_client($kwargs) {
+		if (self::$service_type == '10')
+			return ServiceFixture::oauth10($kwargs);
+		return ServiceFixture::oauth20($kwargs);
+	}
+
+}
+
+class OAuthManagePatched extends OAuthManage {
+
+	/** Service type, for fixture selection. */
+	public static $service_type;
+
+	/** Service fixture. */
 	public function fetch_profile(
 		OAuthCommon $oauth_action,
 		string $service_type, string $service_name, array $kwargs=[]
@@ -60,29 +75,6 @@ class OAuthRoute extends OAuthRouteDefault {
 			];
 		}
 		return $perm;
-	}
-
-}
-
-class OAuthManagePatched extends OAuthManage {
-
-	/** Service type, for fixture selection. */
-	public static $service_type;
-
-	/** Service fixture. */
-	public function fetch_profile(
-		OAuthCommon $oauth_action,
-		string $service_type, string $service_name, array $kwargs=[]
-	) {
-		return ServiceFixture::fetch_profile(
-			$oauth_action, $service_type, $service_name, $kwargs);
-	}
-
-	/** Service fixture. */
-	public function http_client($kwargs) {
-		if (self::$service_type == '10')
-			return ServiceFixture::oauth10($kwargs);
-		return ServiceFixture::oauth20($kwargs);
 	}
 
 }
@@ -317,7 +309,7 @@ class OAuthRouteTest extends TestCase {
 		# action instance can be used to make requests
 		$rv = $act->request([
 			'method' => 'GET',
-			'url' => 'http://twitter.example.org/10/api/me',
+			'url' => 'http://twitter.example.org/10/api/me?q=1',
 		]);
 		$eq($rv[0], 200);
 		extract(json_decode($rv[1], true));
