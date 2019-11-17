@@ -209,6 +209,8 @@ class OAuthManage extends AuthManage {
 	 *
 	 * @param string $service_type Service type.
 	 * @param string $service_name Service name.
+	 * @return OAuthCommon Instance of OAuth*Permission on success.
+	 *     Null on failure.
 	 */
 	public function get_permission_instance(
 		string $service_type, string $service_name
@@ -253,7 +255,8 @@ class OAuthManage extends AuthManage {
 	 * auth_basic_for_site_callback in OAuth2.0.
 	 *
 	 * @param dict $args Router HTTP variables.
-	 * @param object $oauth_perm OAuth*Permission instance.
+	 * @param OAuthCommen $oauth_perm OAuth*Permission instance.
+	 * @return OAuthCommon Modified OAuth*Permission instance.
 	 * @codeCoverageIgnore
 	 *
 	 * ### Example:
@@ -294,6 +297,8 @@ class OAuthManage extends AuthManage {
 	 *     by site_callback() or retrived. OAuth1.0 only.
 	 * @param string $refresh_token Refresh token returned by
 	 *     $this->route_byway_callback() or retrieved. OAuth2.0 only.
+	 * @return OAuthCommon Instance of OAuth*Action instance on success.
+	 *     Null otherwise.
 	 */
 	public function get_action_instance(
 		string $service_type, string $service_name,

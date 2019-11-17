@@ -74,43 +74,59 @@ class OAuthRouteDevTest extends TestCase {
 		if (!defined('ZAPMIN_OAUTH_DEV'))
 			define('ZAPMIN_OAUTH_DEV', 1);
 
+		$pfail = function($_core) {
+			$loc = array_filter($_core::$head, function($ele) {
+				return strpos($ele, 'Location:') !== false;
+			})[0];
+			$loc = explode('?', $loc)[1];
+			parse_str($loc, $out);
+			$code = $out['code'] ?? -1;
+			$errno = $out['errno'] ?? -1;
+			return [$code, $errno];
+		};
+
 		$rdev
 			->request('/oauth/10/github/auth')
 			->route('/oauth/<service_type>/<service_name>/auth',
 				[$router, 'route_fake_login']);
-		$eq($core::$code, 403);
-		$eq($core::$errno, OAuthError::INCOMPLETE_DATA);
+		list($code, $errno) = $pfail($core);
+		$eq($code, 403);
+		$eq($errno, OAuthError::INCOMPLETE_DATA);
 
 		$rdev
 			->request('/oauth/10/github/auth')
 			->route('/oauth/<service_type>/github/auth',
 				[$router, 'route_fake_login']);
-		$eq($core::$code, 404);
-		$eq($core::$errno, OAuthError::SERVICE_UNKNOWN);
+		list($code, $errno) = $pfail($core);
+		$eq($code, 404);
+		$eq($errno, OAuthError::SERVICE_UNKNOWN);
 
 		$rdev
 			->request('/oauth/10/github/auth', 'GET',
 				['get' => ['email' => 'me@github.io']])
 			->route('/oauth/<service_type>/<service_name>/auth',
 				[$router, 'route_fake_login']);
-		$eq($core::$code, 404);
-		$eq($core::$errno, OAuthError::SERVICE_UNKNOWN);
+		list($code, $errno) = $pfail($core);
+		$eq($code, 404);
+		$eq($errno, OAuthError::SERVICE_UNKNOWN);
 
 		$rdev
 			->request('/oauth/10/github/auth', 'GET',
 				['get' => ['email' => 'me+github.io']])
 			->route('/oauth/<service_type>/<service_name>/auth',
 				[$router, 'route_fake_login']);
-		$eq($core::$code, 403);
-		$eq($core::$errno, OAuthError::INCOMPLETE_DATA);
+		list($code, $errno) = $pfail($core);
+		$eq($code, 403);
+		$eq($errno, OAuthError::INCOMPLETE_DATA);
 
 		$rdev
 			->request('/oauth/20/tumblr/auth', 'GET',
 				['get' => ['email' => 'me@github.io']])
 			->route('/oauth/<service_type>/<service_name>/auth',
 				[$router, 'route_fake_login']);
-		$eq($core::$code, 404);
-		$eq($core::$errno, OAuthError::SERVICE_UNKNOWN);
+		list($code, $errno) = $pfail($core);
+		$eq($code, 404);
+		$eq($errno, OAuthError::SERVICE_UNKNOWN);
 
 		$rdev
 			->request('/oauth/20/tumblr/auth', 'GET',
