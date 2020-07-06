@@ -75,7 +75,7 @@ class OAuth20Action extends OAuthCommon {
 	 * Refresh token.
 	 *
 	 * This will request a new access token given a refresh token.
-	 * Not all providers provice this facility.
+	 * Not all providers provide this facility.
 	 *
 	 * @param bool $expect_json Whether JSON response is to be
 	 *     expected.

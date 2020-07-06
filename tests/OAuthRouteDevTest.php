@@ -15,7 +15,7 @@ use BFITech\ZapCoreDev\TestCase;
 
 
 /**
- * OAUthRouteDevTest.
+ * OAuthRouteDevTest.
  *
  * This doesn't require fixture since the internal process of
  * OAuthRouteDev::route_fake_login is only based on registered service

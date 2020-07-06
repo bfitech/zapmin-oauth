@@ -40,11 +40,14 @@ class OAuthCommon {
 	/**
 	 * HTTP client wrapper.
 	 *
-	 * Use $this->http_client_custom for custom HTTP client or for
+	 * Use $this->http_client_custom for custom HTTP client, e.g. for
 	 * testing, with exact same arguments with Common::http_client.
+	 *
+	 * @param array $kwargs Request parameters.
 	 * @return array A list of the form `[HTTP code, response body]`.
 	 *     HTTP code is -1 for invalid method, 0 for failing connection,
 	 *     and any of standard code for successful connection.
+	 * @see BFITech\ZapCore\Common::http_client.
 	 */
 	public function http_client(array $args) {
 		if (
