@@ -2,34 +2,25 @@
 
 
 require_once(__DIR__ . '/OAuthFixture.php');
+require_once(__DIR__ . '/RoutingDevPatched.php');
 
 
 use BFITech\ZapCore\Logger;
-use BFITech\ZapCoreDev\RouterDev;
-use BFITech\ZapCoreDev\RoutingDev;
 use BFITech\ZapStore\SQLite3;
 use BFITech\ZapStore\SQLError;
 use BFITech\ZapAdmin\Admin;
 use BFITech\ZapAdmin\AuthCtrl;
-use BFITech\ZapOAuth\OAuthCommon;
 use BFITech\ZapAdmin\OAuthManage;
 use BFITech\ZapAdmin\OAuthRouteDefault;
+use BFITech\ZapOAuth\OAuthCommon;
 use BFITech\ZapOAuth\OAuthError;
 use BFITech\ZapCoreDev\TestCase;
 
 
-class Router extends RouterDev {
-
-	public static function send_cookie(
-		$name, $value='', $expire=0, $path='', $domain='',
-		$secure=false, $httponly=false
-	) {
-		// do nothing
-	}
-
-}
-
-class OAuthRoute extends OAuthRouteDefault {
+/**
+ * OAuthRouteDefault with mock http client.
+ */
+class OAuthRouteDefaultPatched extends OAuthRouteDefault {
 
 	/** Service type, for fixture selection. */
 	public static $service_type;
@@ -43,6 +34,9 @@ class OAuthRoute extends OAuthRouteDefault {
 
 }
 
+/**
+ * OAuthManage with mock http client and other mock methods.
+ */
 class OAuthManagePatched extends OAuthManage {
 
 	/** Service type, for fixture selection. */
@@ -57,10 +51,11 @@ class OAuthManagePatched extends OAuthManage {
 			$oauth_action, $service_type, $service_name, $kwargs);
 	}
 
-	/** Service fixture. */
+	/** Mock HTTP client. */
 	public function http_client($kwargs) {
-		if (self::$service_type == '10')
+		if (self::$service_type == '10') {
 			return ServiceFixture::oauth10($kwargs);
+		}
 		return ServiceFixture::oauth20($kwargs);
 	}
 
@@ -81,28 +76,65 @@ class OAuthManagePatched extends OAuthManage {
 
 class OAuthRouteTest extends TestCase {
 
-	public static $store;
 	public static $logger;
-	public static $core;
+	public static $sql;
 
 	public static function setUpBeforeClass() {
-		self::$logger = new Logger(Logger::ERROR, '/dev/null');
-		self::$store = new SQLite3(['dbname' => ':memory:'],
-			self::$logger);
-		self::$core = (new Router())
-			->config('home', '/')
-			->config('logger', self::$logger);
+		$logfile = self::tdir(__FILE__) . '/zapmin-oauth-route.log';
+		if (file_exists($logfile))
+			unlink($logfile);
+		self::$logger = new Logger(Logger::DEBUG, $logfile);
 	}
 
-	private function create_route_10() {
-		$admin = new Admin(self::$store, self::$logger);
-		$admin
+	public function tearDown() {
+		self::$sql = null;
+		self::$logger->info("TEST DONE.");
+	}
+
+	/** Get redirect from list of response headers. */
+	private function get_redir_url($heads) {
+		$location_header = array_filter($heads, function($ele){
+			return strpos($ele, 'Location:') === 0;
+		});
+		if (!$location_header)
+			return null;
+		return explode(' ', $location_header[0])[1];
+	}
+
+	private function make_dev_patched() {
+		### RoutingDev instance. Renew every time after mock request is
+		### complete. Do not reuse.
+		$rdev = new RoutingDevPatched;
+
+		$log = self::$logger;
+		$core = $rdev::$core
+			->config('home', '/')
+			->config('logger', $log);
+
+		### Renew database if null, typically after tearDown.
+		if (!self::$sql)
+			self::$sql = new SQLite3(['dbname' => ':memory:'], $log);
+
+		### Admin instance.
+		$admin = (new Admin(self::$sql, $log))
 			->config('expire', 3600)
-			->config('token_name', 'testing')
+			->config('token_name', 'test-zapmin-oauth')
 			->config('check_tables', true);
-		$ctrl = new AuthCtrl($admin, self::$logger);
-		$manage = new OAuthManagePatched($admin, self::$logger);
-		$manage::$service_type = '10';
+
+		### AuthCtrl instance.
+		$ctrl = new AuthCtrl($admin, $log);
+
+		### OAuthManage instance.
+		$manage = new OAuthManagePatched($admin, $log);
+
+		return [$rdev, $ctrl, $manage];
+	}
+
+	private function make_zcore_10() {
+		list($rdev, $ctrl, $manage) = $this->make_dev_patched();
+		$core = $rdev::$core;
+
+		# Add services.
 		$manage->add_service(
 			'10', 'tumblr',
 			'test-consumer-key', 'test-consumer-secret',
@@ -120,20 +152,23 @@ class OAuthRouteTest extends TestCase {
 			null, 'http://localhost'
 		);
 		$manage->callback_fail_redirect = 'http://localhost/fail';
-		$route = new OAuthRoute(self::$core, $ctrl, $manage);
-		$route::$service_type = '10';
-		return $route;
+		$manage::$service_type = '10';
+
+		### OAuthRouteDefault instance.
+		$zcore = new OAuthRouteDefaultPatched($core, $ctrl, $manage);
+		$zcore::$service_type = '10';
+
+		### Set $rdev::$zcore so we can do request-route chaining.
+		$rdev::$zcore = $zcore;
+
+		return [$zcore, $rdev, $core];
 	}
 
-	private function create_route_20() {
-		$admin = new Admin(self::$store, self::$logger);
-		$admin
-			->config('expire', 3600)
-			->config('token_name', 'testing')
-			->config('check_tables', true);
-		$ctrl = new AuthCtrl($admin, self::$logger);
-		$manage = new OAuthManagePatched($admin, self::$logger);
-		$manage::$service_type = '20';
+	private function make_zcore_20() {
+		list($rdev, $ctrl, $manage) = $this->make_dev_patched();
+		$core = $rdev::$core;
+
+		# Add service.
 		$manage->add_service(
 			'20', 'reddit',
 			'test-consumer-key', 'test-consumer-secret',
@@ -143,114 +178,67 @@ class OAuthRouteTest extends TestCase {
 			'email', 'http://localhost'
 		);
 		$manage->callback_ok_redirect = 'http://localhost/ok';
-		$route = new OAuthRoute(self::$core, $ctrl, $manage);
-		$route::$service_type = '20';
-		return $route;
+		$manage::$service_type = '20';
+
+		### OAuthRouteDefault instance.
+		$zcore = new OAuthRouteDefaultPatched($core, $ctrl, $manage);
+		$zcore::$service_type = '20';
+
+		### Set $rdev::$zcore so we can do request-route chaining.
+		$rdev::$zcore = $zcore;
+
+		return [$zcore, $rdev, $core];
 	}
 
-	public function test_constructor() {
-		$logger = new Logger(Logger::ERROR, '/dev/null');
-		$store = new SQLite3(['dbname' => ':memory:'], $logger);
-		$core = (new Router())
-			->config('logger', $logger);
-
-		$no_table = false;
-		try {
-			$store->query("SELECT 1 FROM uoauth");
-		} catch(SQLError $e) {
-			$no_table = true;
-		}
-		$this->tr()($no_table);
-
-		$admin = new Admin($store, $logger);
-		$admin
-			->config('expire', 3600)
-			->config('token_name', 'testing')
-			->config('check_tables', true);
-		$ctrl = new AuthCtrl($admin, $logger);
-		$manage = new OAuthManagePatched($admin, $logger);
-		$router = new OAuthRoute($core, $ctrl, $manage);
-
-		// # deinit won't take effect on uninited instance
-		// $router->deinit();
-		// # let's init
-		// $router->init();
-		//
-		// # table just got installed with one default user
-		// $store->query("SELECT 1 FROM uoauth");
-		//
-		// # let's ruin default user from the db
-		// $store->update('udata', ['uname' => 'toor'],
-		// 	['uname' => 'root']);
-		//
-		// # recreate tables, including those installed by AdminStore
-		// $router->deinit()
-		// 	->config('force_create_table', true)
-		// 	->init();
-
-		$this->assertNotFalse(
-			$store->query("SELECT uid FROM udata WHERE uname=?",
-			['root']));
-	}
-
-	private function get_redir_url($heads) {
-		$location_header = array_filter($heads, function($ele){
-			return strpos($ele, 'Location:') === 0;
-		});
-		if (!$location_header)
-			return null;
-		return explode(' ', $location_header[0])[1];
-	}
-
-	public function test_route_10() {
+	public function test_oauth_10() {
 		extract(self::vars());
 
-		$router = $this->create_route_10();
-		$manage = $router::$manage;
-		$core = $router::$core;
-		$rdev = new RoutingDev($core);
-
 		# invalid params
+		list($zcore, $rdev, $core) = $this->make_zcore_10();
 		$rdev
 			->request('/')
-			->route('/', [$router, 'route_byway_auth']);
+			->route('/', [$zcore, 'route_byway_auth']);
 		$eq($core::$code, 404);
 		$eq($core::$errno, OAuthError::INCOMPLETE_DATA);
 
 		# wrong route callback application
+		list($zcore, $rdev, $core) = $this->make_zcore_10();
 		$rdev
 			->request('/oauth/wrong/url')
-			->route('/oauth/wrong/url', [$router, 'route_byway_auth']);
+			->route('/oauth/wrong/url', [$zcore, 'route_byway_auth']);
 		$eq($core::$code, 404);
 		$eq($core::$errno, OAuthError::INCOMPLETE_DATA);
 
 		# unregistered service
+		list($zcore, $rdev, $core) = $this->make_zcore_10();
 		$rdev
 			->request('/oauth/10/vk/auth')
 			->route('/oauth/<service_type>/<service_name>/auth',
-				[$router, 'route_byway_auth']);
+				[$zcore, 'route_byway_auth']);
 		$eq($core::$code, 404);
 		$eq($core::$errno, OAuthError::SERVICE_UNKNOWN);
 
 		# server/network error, see fixture
+		list($zcore, $rdev, $core) = $this->make_zcore_10();
 		$rdev
 			->request('/oauth/10/tumblr/auth')
 			->route('/oauth/<service_type>/<service_name>/auth',
-				[$router, 'route_byway_auth']);
+				[$zcore, 'route_byway_auth']);
 		$eq($core::$code, 503);
 		$eq($core::$errno, 	OAuthError::ACCESS_URL_MISSING);
 
 		# access token success
+		list($zcore, $rdev, $core) = $this->make_zcore_10();
 		$rdev
 			->request('/oauth/10/twitter/auth')
 			->route('/oauth/<service_type>/<service_name>/auth',
-				[$router, 'route_byway_auth']);
+				[$zcore, 'route_byway_auth']);
 		$eq($core::$code, 200);
 		$auth_url = $core::$body['data'];
 		$eq(0, strpos($auth_url, 'http://example.org/10/auth'));
 
 		# open access token URL
-		$access = $router->http_client([
+		$access = $zcore->http_client([
 			'method' => 'GET',
 			'url' => $auth_url,
 		]);
@@ -261,51 +249,53 @@ class OAuthRouteTest extends TestCase {
 		parse_str(parse_url($redir)['query'], $received_qs);
 
 		# failed authentication due to wrong query string
+		list($zcore, $rdev, $core) = $this->make_zcore_10();
 		$rdev
 			->request('/oauth/10/twitter/callback', 'GET',
 				['get' => ['wrong' => 'data']])
 			->route('/oauth/<service_type>/<service_name>/callback',
-				[$router, 'route_byway_callback']);
+				[$zcore, 'route_byway_callback']);
 		# redirect to fail callback
 		$eq($core::$code, 301);
 		$eq($this->get_redir_url($core::$head),
-			$manage->callback_fail_redirect);
+			$zcore::$manage->callback_fail_redirect);
 
 		# failed authentication due to wrong service
+		list($zcore, $rdev, $core) = $this->make_zcore_10();
 		$rdev
 			->request('/oauth/10/tumblr/callback', 'GET',
 				['get' => $received_qs])
 			->route('/oauth/<service_type>/<service_name>/callback',
-				[$router, 'route_byway_callback']);
+				[$zcore, 'route_byway_callback']);
 		# redirect to fail callback
 		$eq($core::$code, 301);
 		$eq($this->get_redir_url($core::$head),
-			$manage->callback_fail_redirect);
+			$zcore::$manage->callback_fail_redirect);
 
 		# successful authentication
-		$rdev->request('/oauth/10/twitter/callback', 'GET',
-			['get' => $received_qs]);
-		$router->route('/oauth/<service_type>/<service_name>/callback',
-			[$router, 'route_byway_callback']);
+		list($zcore, $rdev, $core) = $this->make_zcore_10();
+		$rdev
+			->request('/oauth/10/twitter/callback', 'GET',
+				['get' => $received_qs])
+			->route('/oauth/<service_type>/<service_name>/callback',
+				[$zcore, 'route_byway_callback']);
 		# redirect to ok callback
 		$eq($core::$code, 301);
 		$eq(
 			$this->get_redir_url($core::$head),
-			$router::$core->get_home());
+			$zcore::$core->get_home());
 
-		# token is sent via cookie only, which is not available in
-		# the test; let's pull it from database
-		$session_token = $manage::$admin::$store->query(
-			"SELECT token FROM usess " .
-			"ORDER BY sid DESC LIMIT 1")['token'];
+		# token is sent via cookie
+		$session_token = $_COOKIE['test-zapmin-oauth'];
 
-		# use session token for signing in
-		$router::$ctrl->set_token_value($session_token);
-		$rv = $router::$ctrl->get_user_data();
+		# use session token for retrieving user data
+		$zcore::$ctrl->set_token_value($session_token);
+		$rv = $zcore::$ctrl->get_user_data();
 		$eq($rv['token'], $session_token);
 
-		# token can be used to instantiate oauth action
-		$act = $manage->get_action_from_session($session_token);
+		### token can be used to instantiate oauth action
+		$act = $zcore::$manage->get_action_from_session($session_token);
+
 		# action instance can be used to make requests
 		$rv = $act->request([
 			'method' => 'GET',
@@ -316,39 +306,37 @@ class OAuthRouteTest extends TestCase {
 		$eq($fname, "John Smith");
 	}
 
-	public function test_route_20() {
+	public function test_oauth_20() {
 		extract(self::vars());
 
-		$router = $this->create_route_20();
-		$manage = $router::$manage;
-		$core = $router::$core;
-		$rdev = new RoutingDev($core);
-
 		# invalid params
+		list($zcore, $rdev, $core) = $this->make_zcore_20();
 		$rdev
 			->request('/')
-			->route('/', [$router, 'route_byway_auth']);
+			->route('/', [$zcore, 'route_byway_auth']);
 		$eq($core::$code, 404);
 
 		# unregistered service
+		list($zcore, $rdev, $core) = $this->make_zcore_20();
 		$rdev
 			->request('/oauth/20/instagram/auth')
 			->route('/oauth/<service_type>/<service_name>/auth',
-				[$router, 'route_byway_auth']);
+				[$zcore, 'route_byway_auth']);
 		$eq($core::$code, 404);
 		$eq($core::$body['errno'], OAuthError::SERVICE_UNKNOWN);
 
 		# success
+		list($zcore, $rdev, $core) = $this->make_zcore_20();
 		$rdev
 			->request('/oauth/20/reddit/auth')
 			->route('/oauth/<service_type>/<service_name>/auth',
-				[$router, 'route_byway_auth']);
+				[$zcore, 'route_byway_auth']);
 		$eq($core::$code, 200);
 		$auth_url = $core::$body['data'];
 		$sm(0, strpos($auth_url, 'http://reddit.example.org/20/auth'));
 
 		# open access token URL
-		$access = $router->http_client([
+		$access = $zcore->http_client([
 			'method' => 'GET',
 			'url' => $auth_url,
 		]);
@@ -359,52 +347,53 @@ class OAuthRouteTest extends TestCase {
 		parse_str(parse_url($redir)['query'], $received_qs);
 
 		# wrong route callback application
+		list($zcore, $rdev, $core) = $this->make_zcore_20();
 		$rdev
 			->request('/oauth/wrong/url')
 			->route('/oauth/wrong/url',
-				[$router, 'route_byway_callback']);
+				[$zcore, 'route_byway_callback']);
 		$eq($core::$code, 404);
 
 		# visiting invalid site callback
+		list($zcore, $rdev, $core) = $this->make_zcore_20();
 		$rdev
 			->request('/oauth/20/google/callback')
 			->route('/oauth/<service_type>/<service_name>/callback',
-				[$router, 'route_byway_callback']);
+				[$zcore, 'route_byway_callback']);
 		$eq($core::$code, 404);
 
 		# failed authentication without redirect, shows abort(503)
+		list($zcore, $rdev, $core) = $this->make_zcore_20();
 		$rdev
 			->request('/oauth/20/reddit/callback', 'GET',
 				['get' => ['wrong' => 'data']])
 			->route('/oauth/<service_type>/<service_name>/callback',
-				[$router, 'route_byway_callback']);
+				[$zcore, 'route_byway_callback']);
 		$eq($core::$code, 503);
 
+		# success
+		list($zcore, $rdev, $core) = $this->make_zcore_20();
 		$rdev
 			->request('/oauth/20/reddit/callback', 'GET',
 				['get' => $received_qs])
 			->route('/oauth/<service_type>/<service_name>/callback',
-				[$router, 'route_byway_callback']);
+				[$zcore, 'route_byway_callback']);
 		$eq($core::$code, 301);
-		$redir_local = explode(
-			' ', array_filter($core::$head, function($ele){
-				return strpos($ele, 'Location:') === 0;
-			})[0]
-		)[1];
-		$eq($redir_local, $manage->callback_ok_redirect);
+		$eq($this->get_redir_url($core::$head),
+			$zcore::$manage->callback_ok_redirect);
 
-		# token is sent via cookie only, which is not available in
-		# the test; let's pull it from database
-		$session_token = $manage::$admin::$store->query(
-			"SELECT token FROM usess " .
-			"ORDER BY sid DESC LIMIT 1")['token'];
+		# token is sent via cookie
+		$session_token = $_COOKIE['test-zapmin-oauth'];
 
-		# use session token for signing in
-		$router::$ctrl->set_token_value($session_token);
-		$rv = $router::$ctrl->get_user_data();
+		# use session token for retrieving user data
+		$zcore::$ctrl->set_token_value($session_token);
+		$rv = $zcore::$ctrl->get_user_data();
 		$eq($rv['token'], $session_token);
 
-		$act = $manage->get_action_from_session($session_token);
+		### token can be used to instantiate oauth action
+		$act = $zcore::$manage->get_action_from_session($session_token);
+
+		# use session token for mock action
 		$rv = $act->request([
 			'method' => 'GET',
 			'url' => 'http://reddit.example.org/20/api/me',
