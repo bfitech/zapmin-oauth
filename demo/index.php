@@ -1,7 +1,7 @@
 <?php
 
 
-require(__DIR__ . '/../../vendor/autoload.php');
+require(__DIR__ . '/../vendor/autoload.php');
 
 
 use BFITech\ZapCore\Logger;
@@ -14,7 +14,7 @@ use BFITech\ZapAdmin\OAuthRouteDefault;
 
 
 function testdir() {
-	$dir = __DIR__ . '/testdata';
+	$dir = __DIR__ . '/data';
 	if (!is_dir($dir))
 		mkdir($dir, 0755);
 	return $dir;

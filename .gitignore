@@ -14,8 +14,9 @@ composer.lock
 phpcs.xml
 phpmd.xml
 
+/demo/static/
+/demo/data/
 /docs/
-/tests/htdocs-test/static/
 /tests/testdata/
 /vendor/
 
