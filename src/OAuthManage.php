@@ -52,8 +52,8 @@ class OAuthManage extends AuthManage {
 	/** Redirect URL after failed callback. */
 	public $callback_fail_redirect = null;
 
-	/** Service config cache. */
-	private $service_configs = [];
+	/** Service info cache. */
+	private $services = [];
 
 	private $initialized = false;
 	private $check_table = false;
@@ -235,13 +235,13 @@ class OAuthManage extends AuthManage {
 		}
 
 		$key = $service_type . '-' . $service_name;
-		if (isset($this->service_configs[$key])) {
+		if (isset($this->services[$key])) {
 			$log->error(sprintf(
 				"ZapOAuth: Service already registered: '%s'", $key));
 			return false;
 		}
 
-		$conf = $this->service_configs[$key] = [
+		$srv = $this->services[$key] = [
 			'consumer_key' => $consumer_key,
 			'consumer_secret' => $consumer_secret,
 			'service_type' => $service_type,
@@ -252,7 +252,9 @@ class OAuthManage extends AuthManage {
 			'url_callback' => $url_callback,
 			'scope' => $scope,                  # 2.0 only
 		];
-		$log->debug("ZapOAuth: Service added: " . json_encode($conf));
+		$log->debug(
+			"ZapOAuth: Service added: " .
+			json_encode($srv, JSON_UNESCAPED_SLASHES));
 	}
 
 	# super-oauth methods
@@ -269,7 +271,7 @@ class OAuthManage extends AuthManage {
 		string $service_type, string $service_name
 	) {
 		$key = $service_type . '-' . $service_name;
-		if (!isset($this->service_configs[$key]))
+		if (!isset($this->services[$key]))
 			# key invalid
 			return null;
 
@@ -278,8 +280,8 @@ class OAuthManage extends AuthManage {
 		$url_access_token = $url_callback = null;
 		$scope = null;
 
-		$conf = $this->service_configs[$key];
-		extract($conf);
+		$srv = $this->services[$key];
+		extract($srv);
 
 		$perm = $service_type == '10' ?
 			new OAuth10Permission(
@@ -361,22 +363,24 @@ class OAuthManage extends AuthManage {
 		string $refresh_token=null
 	) {
 		$key = $service_type . '-' . $service_name;
-		if (!isset($this->service_configs[$key]))
+		if (!isset($this->services[$key]))
 			# key invalid
 			return null;
 
-		$conf = $this->service_configs[$key];
-		extract($conf);
+		$consumer_key = $consumer_secret = $url_access_token = null;
+
+		$srv = $this->services[$key];
+		extract($srv);
 
 		$act = $service_type == '10' ?
 			new OAuth10Action(
-				$conf['consumer_key'], $conf['consumer_secret'],
+				$consumer_key, $consumer_secret,
 				$access_token, $access_token_secret
 			) :
 			new OAuth20Action(
-				$conf['consumer_key'], $conf['consumer_secret'],
+				$consumer_key, $consumer_secret,
 				$access_token, $refresh_token,
-				$conf['url_access_token']
+				$url_access_token
 			);
 
 		# use custom client for action instance
