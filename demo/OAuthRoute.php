@@ -14,7 +14,7 @@ class OAuthRoute extends \BFITech\ZapAdmin\OAuthRouteDefault {
 	 * GET: /
 	 **/
 	public function route_home($args=null) {
-		$mithril = '//cdnjs.cloudflare.com/ajax/libs/mithril/' +
+		$mithril = '//cdnjs.cloudflare.com/ajax/libs/mithril/' .
 			'2.0.4/mithril.min.js';
 		self::$core::start_header(200, 3600);
 		echo <<<EOD
