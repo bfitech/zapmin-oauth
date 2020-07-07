@@ -19,3 +19,4 @@ $ doxygen
 $ x-www-browser docs/html/index.html
 ```
 
+See `./demo` for quick usage.

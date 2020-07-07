@@ -1,15 +1,4 @@
-<?php
 
-// @note This demo assumes running on top-level path. Change base URL
-//     if you want to run it in sub-path.
-
-?><!doctype html>
-<html>
-<head>
-	<base href=/>
-	<title>Test OAuth Client</title>
-	<script src=./static/angular/angular.min.js></script>
-	<script>
 (function(){
 	"use strict";
 	angular.module('ZapOAuth', []).
@@ -81,67 +70,3 @@
 		};
 	});
 })();
-	</script>
-	<style>
-	#wrap{
-		display:flex;
-		align-items:center;
-		justify-content:center;
-		height:90vh;
-		font-family:monospace;
-	}
-	#box{
-		height:18em;
-		padding:8px 16px;
-		border:1px solid rgba(0,0,0,.3);
-		width:400px;
-	}
-	</style>
-</head>
-<body>
-<div id=wrap ng-app=ZapOAuth ng-controller=cred>
-	<div id=box>
-		<div ng-show=isIn>
-			<p>uid: {{uid}}</p>
-			<p>uname: {{uname}}</p>
-			<p>
-				<button ng-click='signOut()'>
-					SIGN OUT
-				</button>
-				<button ng-click='refreshToken()'
-					ng-show=canRefresh>
-					REFRESH TOKEN
-				</button>
-			</p>
-		</div>
-		<div ng-show=!isIn>
-			<p>
-				<button ng-click='signIn("twitter")'
-					ng-disabled=isSigningIn>
-					OAuth1.0 with Twitter
-				</button>
-			</p>
-			<p>
-				<button ng-click='signIn("github")'
-					ng-disabled=isSigningIn>
-					OAuth2.0 with Github
-				</button>
-			</p>
-			<p>
-				<button ng-click='signIn("google")'
-					ng-disabled=isSigningIn>
-					OAuth2.0 with Google
-				</button>
-			</p>
-			<p>
-				<button ng-click='signIn("whatever")'
-					ng-disabled=isSigningIn>
-					Unknown Service
-				</button>
-			</p>
-		</div>
-		<p ng-show=errMsg>
-			<strong>ERROR:</strong> {{errMsg}}
-		</p>
-	</div>
-</div>
