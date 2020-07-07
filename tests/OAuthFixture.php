@@ -200,8 +200,6 @@ class ServiceFixture {
 		) {
 			return [];
 		}
-		# @fixme: Add expect_json switch to CommonDev::http_client
-		# to avoid decoding like this
 		$profile = json_decode($fixture_response[1], true);
 		return $profile;
 	}

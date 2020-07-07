@@ -13,8 +13,8 @@ use BFITech\ZapOAuth\OAuthError;
  * Default routers.
  *
  * This is usually sufficient for standard OAuth authentication.
+ * See ./demo for usage.
  *
- * @see ./tests/htdocs-test/index for usage.
  * @see Route.
  */
 class OAuthRouteDefault extends Route {
@@ -53,6 +53,7 @@ class OAuthRouteDefault extends Route {
 		if (!$perm)
 			# service unknown
 			return $core::pj([OAuthError::SERVICE_UNKNOWN], 404);
+
 		$perm = self::$manage->finetune_permission($args, $perm);
 
 		$url = $perm->get_access_token_url();

@@ -12,7 +12,7 @@ class OAuthRoute extends \BFITech\ZapAdmin\OAuthRouteDefault {
 
 	/**
 	 * GET: /
-	 **/
+	 */
 	public function route_home($args=null) {
 		$mithril = '//cdnjs.cloudflare.com/ajax/libs/mithril/' .
 			'2.0.4/mithril.min.js';
@@ -35,7 +35,7 @@ EOD;
 
 	/**
 	 * GET: /status
-	 **/
+	 */
 	public function route_status($args) {
 		$core = self::$core;
 		$retval = self::$ctrl->get_safe_user_data();
@@ -46,7 +46,7 @@ EOD;
 
 	/**
 	 * GET|POST: /logout
-	 **/
+	 */
 	public function route_logout($args=null) {
 		$core = self::$core;
 		$udata = self::$ctrl->get_user_data();
@@ -60,7 +60,7 @@ EOD;
 	 * POST: /refresh
 	 *
 	 * FIXME: Untested.
-	 **/
+	 */
 	public function route_refresh($args=null) {
 		$core = self::$core;
 		$udata = self::$ctrl->get_user_data();
@@ -79,7 +79,7 @@ EOD;
 
 	/**
 	 * GET: /static/{path}
-	 **/
+	 */
 	public function route_static($args) {
 		return self::$core->static_file(
 			__DIR__ . '/static/' . $args['params']['path']);

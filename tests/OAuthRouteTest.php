@@ -25,8 +25,14 @@ class OAuthRouteDefaultPatched extends OAuthRouteDefault {
 	/** Service type, for fixture selection. */
 	public static $service_type;
 
-	/** Service fixture. */
-	public function http_client($kwargs) {
+	/**
+	 * Fake HTTP client.
+	 *
+	 * Not to be confused with OAuthManage::http_client_custom which is
+	 * used internally by OAuth*{Action,Permission} classes. This is for
+	 * simulating a workflow on the browser.
+	 */
+	public function fake_http_client($kwargs) {
 		if (self::$service_type == '10')
 			return ServiceFixture::oauth10($kwargs);
 		return ServiceFixture::oauth20($kwargs);
@@ -42,17 +48,17 @@ class OAuthManagePatched extends OAuthManage {
 	/** Service type, for fixture selection. */
 	public static $service_type;
 
-	/** Service fixture. */
+	/** Mock profile fetcher. */
 	public function fetch_profile(
-		OAuthCommon $oauth_action,
-		string $service_type, string $service_name, array $kwargs=[]
+		OAuthCommon $oauth_action, string $service_type,
+		string $service_name, array $kwargs=[]
 	) {
 		return ServiceFixture::fetch_profile(
 			$oauth_action, $service_type, $service_name, $kwargs);
 	}
 
 	/** Mock HTTP client. */
-	public function http_client($kwargs) {
+	public function http_client_custom($kwargs) {
 		if (self::$service_type == '10') {
 			return ServiceFixture::oauth10($kwargs);
 		}
@@ -238,7 +244,7 @@ class OAuthRouteTest extends TestCase {
 		$eq(0, strpos($auth_url, 'http://example.org/10/auth'));
 
 		# open access token URL
-		$access = $zcore->http_client([
+		$access = $zcore->fake_http_client([
 			'method' => 'GET',
 			'url' => $auth_url,
 		]);
@@ -336,7 +342,7 @@ class OAuthRouteTest extends TestCase {
 		$sm(0, strpos($auth_url, 'http://reddit.example.org/20/auth'));
 
 		# open access token URL
-		$access = $zcore->http_client([
+		$access = $zcore->fake_http_client([
 			'method' => 'GET',
 			'url' => $auth_url,
 		]);

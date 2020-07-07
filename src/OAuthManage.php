@@ -17,13 +17,13 @@ use BFITech\ZapOAuth\OAuth20Action;
 
 
 /**
- * Manage class.
+ * OAuthManage class.
  *
  * General workflow:
  *
  * 1. Extend this class, e.g. OAuthManageCustom, with method
  *    fetch_profile() overridden.
- * 2. Instantiate OAuthManageCustom $so, let's call this
+ * 2. Instantiate OAuthManageCustom $so. Let's call this instance
  *    super-oauth.
  * 3. Register services with $so->add_service() with
  *    appropriate configuration.
@@ -32,9 +32,13 @@ use BFITech\ZapOAuth\OAuth20Action;
  *    access token secret for OAuth1 and refresh token for OAuth2.
  * 5. When access token is obtained, use it to make API calls
  *    with $act = $so->get_action_instance(). $act->request()
- *    wraps regular API calls. Especially for OAuth2, there is
+ *    wraps regular API calls. Specific to OAuth2, there is
  *    $act->refresh() that requests access token given a
  *    previously-obtained refresh token.
+ *
+ * To override default http client, e.g. for testing, create a method
+ * http_client_custom on your super-oauth, with the exact same args with
+ * those in BFITech\\ZapCore\\Common::http_client.
  *
  * @if TRUE
  * @SuppressWarnings(PHPMD.LongVariable)
@@ -226,6 +230,7 @@ class OAuthManage extends AuthManage {
 
 		$conf = $this->service_configs[$key];
 		extract($conf);
+
 		// @codeCoverageIgnoreStart
 		$perm = $service_type == '10' ?
 			new OAuth10Permission(
@@ -239,11 +244,14 @@ class OAuthManage extends AuthManage {
 				$url_callback, $scope
 			);
 		// @codeCoverageIgnoreEnd
-		if (method_exists($this, 'http_client')) {
+
+		# use custom client for permission instance
+		if (method_exists($this, 'http_client_custom')) {
 			$perm->http_client_custom = function($kwargs) {
-				return $this->http_client($kwargs);
+				return $this->http_client_custom($kwargs);
 			};
 		}
+
 		return $perm;
 	}
 
@@ -254,16 +262,16 @@ class OAuthManage extends AuthManage {
 	 * auth_basic_for_site_callback in OAuth2.0.
 	 *
 	 * @param dict $args Router HTTP variables.
-	 * @param OAuthCommen $oauth_perm OAuth*Permission instance.
+	 * @param OAuthCommon $oauth_perm OAuth*Permission instance.
 	 * @return OAuthCommon Modified OAuth*Permission instance.
 	 * @codeCoverageIgnore
 	 *
 	 * ### Example:
 	 *
 	 * @code
-	 * class MyOAuthRoute extends OAuthRoute {
+	 * class OAuthManageCustom extends OAuthManage {
 	 *     public function finetune_permission($args, $perm) {
-	 *         if ($args['params'] == 'reddit')
+	 *         if ($args['params']['service_name'] == 'reddit')
 	 *             $perm->auth_basic_for_site_callback = true;
 	 *         return $perm;
 	 *     }
@@ -284,7 +292,7 @@ class OAuthManage extends AuthManage {
 	 * Instantiate OAuth*Action class.
 	 *
 	 * When succeeds, each instance has request() method that we
-	 * can use to make any request. Especially for OAuth2.0, there's
+	 * can use to make any request. Specific to OAuth2.0, there's
 	 * also refresh() method to refresh token when its access token
 	 * is expired.
 	 *
@@ -308,8 +316,10 @@ class OAuthManage extends AuthManage {
 		if (!isset($this->service_configs[$key]))
 			# key invalid
 			return null;
+
 		$conf = $this->service_configs[$key];
 		extract($conf);
+
 		// @codeCoverageIgnoreStart
 		$act = $service_type == '10' ?
 			new OAuth10Action(
@@ -322,9 +332,11 @@ class OAuthManage extends AuthManage {
 				$conf['url_access_token']
 			);
 		// @codeCoverageIgnoreEnd
-		if (method_exists($this, 'http_client')) {
+
+		# use custom client for action instance
+		if (method_exists($this, 'http_client_custom')) {
 			$act->http_client_custom = function($kwargs) {
-				return $this->http_client($kwargs);
+				return $this->http_client_custom($kwargs);
 			};
 		}
 		return $act;

@@ -9,11 +9,14 @@ use BFITech\ZapCore\Common;
 
 /**
  * OAuthCommon class.
+ *
+ * Do not use this class and its subclasses directly. Use
+ * BFITech\\ZapAdmin\\OAuthManage instead.
  */
 class OAuthCommon {
 
 	/**
-	 * Overloader.
+	 * Allow monkey patching.
 	 */
 	public function __call(string $method, array $args) {
 		return call_user_func_array($this->$method, $args);
@@ -38,19 +41,24 @@ class OAuthCommon {
 	}
 
 	/**
-	 * HTTP client wrapper.
+	 * HTTP client.
 	 *
-	 * Create method OAuthCommon::http_client_custom for custom HTTP
-	 * client, e.g. for testing, with exact same arguments with
-	 * Common::http_client.
+	 * This client is used by various OAuth internal operations.
+	 * Overriding this doesn't make sense since this class and its
+	 * subclasses OAuth*{Action,Permission} are never meant for
+	 * userland.
+	 *
+	 * To override, e.g. for testing, create a method http_client_custom
+	 * on the subclass of BFITech\\ZapAdmin\\OAuthManage, with the exact
+	 * same args with those in BFITech\\ZapCore\\Common::http_client.
 	 *
 	 * @param array $kwargs Request parameters.
 	 * @return array A list of the form `[HTTP code, response body]`.
 	 *     HTTP code is -1 for invalid method, 0 for failing connection,
 	 *     and any of standard code for successful connection.
-	 * @see BFITech\\ZapCore\\Common::http_client.
+	 * @see BFITech\\ZapCore\\Common::http_client
 	 */
-	public function http_client(array $kwargs) {
+	final public function http_client(array $kwargs) {
 		if (
 			isset($this->http_client_custom) &&
 			is_callable($this->http_client_custom)
