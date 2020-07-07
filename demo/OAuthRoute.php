@@ -38,10 +38,10 @@ EOD;
 	 **/
 	public function route_status($args) {
 		$core = self::$core;
-		$udata = self::$ctrl->get_user_data();
+		$udata = self::$ctrl->get_safe_user_data();
 		if (!$udata)
 			return $core::pj([1, []], 403);
-		return $core::pj([0, $udata]);
+		return $core::pj([0, $udata[1]]);
 	}
 
 	/**
