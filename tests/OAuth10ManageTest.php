@@ -9,6 +9,7 @@ use BFITech\ZapCore\Logger;
 use BFITech\ZapStore\SQLite3;
 use BFITech\ZapAdmin\Admin;
 use BFITech\ZapAdmin\AuthCtrl;
+use BFITech\ZapAdmin\Error;
 use BFITech\ZapAdmin\OAuthManage;
 use BFITech\ZapOAuth\OAuthCommon;
 use BFITech\ZapOAuth\OAuthError;
@@ -221,6 +222,17 @@ class OAuth10Test extends TestCase {
 		]);
 		$data = json_decode($rv[1], true);
 		$eq($data['uname'], 'john');
+
+		# cannot re-add since user's already signed in
+		$errno = false;
+		try {
+			$manage->add_user(
+				'10', 'twitter', $profile['uname'],
+				$access_token, $access_token_secret, null, $profile);
+		} catch(Error $err) {
+			$errno = $err->getCode();
+		}
+		$sm($errno, Error::USER_ALREADY_LOGGED_IN);
 	}
 
 }

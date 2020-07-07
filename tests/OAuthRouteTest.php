@@ -411,6 +411,22 @@ class OAuthRouteTest extends TestCase {
 		$eq($rv[0], 200);
 		extract(json_decode($rv[1], true));
 		$eq($fname, "John Smith");
+
+		# already signed in, this will just ok-redirect without
+		# actually adding new user
+		list($zcore, $rdev, $core) = $this->make_zcore_20();
+		$rdev
+			->request('/oauth/20/reddit/callback', 'GET', [
+				'get' => $received_qs,
+			], [
+				'test-zapmin-oauth' => $session_token,
+			])->route('/oauth/<service_type>/<service_name>/callback',
+				[$zcore, 'route_byway_callback']);
+		$eq($core::$code, 301);
+		$eq($this->get_redir_url($core::$head),
+			$zcore::$manage->callback_ok_redirect);
+		# cookie doesn't change
+		$sm($session_token, $_COOKIE['test-zapmin-oauth']);
 	}
 
 }

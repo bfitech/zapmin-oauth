@@ -397,15 +397,18 @@ class OAuthManage extends AuthManage {
 	 *
 	 * @param string $service_type '10' for OAuth1, '20' for OAuth2.
 	 * @param string $service_name Service nickname, e.g. 'github'.
-	 * @param string $uname Username obtained by
-	 *     successful $this->fetch_profile().
+	 * @param string $uname Username obtained by successful
+	 *     OAuthManage::fetch_profile().
 	 * @param string $access_token Access token.
 	 * @param string $access_token_secret Access token secret, OAuth1
 	 *     only.
 	 * @param string $refresh_token Refresh token, OAuth2 only.
 	 * @param array $profile Additional profile dict obtained by
-	 *     successful $this->fetch_profile().
+	 *     successful OAuthManage::fetch_profile().
 	 * @return string Session token.
+	 * @throws Error when user is already signed in.
+	 *     OAuthRouteDefault::route_byway_callback or equivalent must
+	 *     stop this from happening.
 	 * @see AuthManage::self_add_passwordless
 	 * @see OAuthRouteDefault::route_byway_callback
 	 */
@@ -414,20 +417,9 @@ class OAuthManage extends AuthManage {
 		string $access_token, string $access_token_secret=null,
 		string $refresh_token=null, array $profile=[]
 	) {
-		# build passwordless account using obtained uname with uservice
-		# having the form 'oauth%service_type%[%service_name%]
-		$uname = rawurlencode($uname);
-		$uservice = sprintf(
-			'oauth%s[%s]', $service_type, $service_name);
-		$args = [
-			'uname' => $uname,
-			'uservice' => $uservice,
-		];
-
-		# register passwordless
-		$retval = $this->self_add_passwordless($args);
-		$udata = $retval[1];
-		$session_token = $udata['token'];
+		# register passwordless or throw exception if user is in
+		$udata = $this->_format_self_add_passwordless(
+			$uname, $service_type, $service_name);
 
 		$sql = self::$admin::$store;
 
@@ -449,9 +441,8 @@ class OAuthManage extends AuthManage {
 			]);
 
 		# save to oauth table
-		$sid = $retval[1]['sid'];
 		$ins = [
-			'sid' => $sid,
+			'sid' => $udata['sid'],
 			'oname' => $service_name,
 			'otype' => $service_type,
 			'access' => $access_token,
@@ -462,7 +453,30 @@ class OAuthManage extends AuthManage {
 			$ins['refresh'] = $refresh_token;
 		$sql->insert('uoauth', $ins);
 
-		return $session_token;
+		return $udata['token'];
+	}
+
+	private function _format_self_add_passwordless(
+		string $uname, string $service_type, string $service_name
+	) {
+		# uname is urlencoded for safety
+		$uname = rawurlencode($uname);
+
+		# uservice is of the form 'oauth%service_type%[%service_name%]
+		$uservice = sprintf(
+			'oauth%s[%s]', $service_type, $service_name);
+
+		# register passwordless
+		$retval = $this->self_add_passwordless([
+			'uname' => $uname,
+			'uservice' => $uservice,
+		]);
+		if ($retval[0] == Error::USER_ALREADY_LOGGED_IN) {
+			$msg = "User already signed in.";
+			self::$logger->error("ZapOAuth: " . $msg);
+			throw new Error(Error::USER_ALREADY_LOGGED_IN, $msg);
+		}
+		return $retval[1];
 	}
 
 	/**

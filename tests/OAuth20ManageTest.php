@@ -9,6 +9,7 @@ use BFITech\ZapCore\Logger;
 use BFITech\ZapStore\SQLite3;
 use BFITech\ZapAdmin\Admin;
 use BFITech\ZapAdmin\AuthCtrl;
+use BFITech\ZapAdmin\Error;
 use BFITech\ZapAdmin\OAuthManage;
 use BFITech\ZapOAuth\OAuthCommon;
 use BFITech\ZapOAuth\OAuthError;
@@ -68,7 +69,7 @@ class OAuth20Test extends TestCase {
 		return $manage;
 	}
 
-	public function test_oauth20_store() {
+	public function test_oauth20() {
 		extract(self::vars());
 
 		$manage = $this->register_services();
@@ -190,6 +191,17 @@ class OAuth20Test extends TestCase {
 		]);
 		$data = json_decode($rv[1], true);
 		$eq($data['uname'], 'john');
+
+		# cannot re-add since user's already signed in
+		$errno = false;
+		try {
+			$manage->add_user(
+				'20', 'reddit', $profile['uname'],
+				$access_token, null, $refresh_token, $profile);
+		} catch(Error $err) {
+			$errno = $err->getCode();
+		}
+		$sm($errno, Error::USER_ALREADY_LOGGED_IN);
 	}
 
 }

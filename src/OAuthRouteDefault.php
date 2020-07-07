@@ -55,9 +55,7 @@ class OAuthRouteDefault extends Route {
 		return $core::pj([0, $url]);
 	}
 
-	/**
-	 * Wrapper for callback error handler.
-	 */
+	/** Wrapper for callback fail redirect. */
 	private function _route_byway_failed() {
 		$core = self::$core;
 		$manage = self::$manage;
@@ -68,11 +66,23 @@ class OAuthRouteDefault extends Route {
 		return $core->abort(503);
 	}
 
+	/** Wrapper for callback ok redirect. */
+	private function _route_byway_ok() {
+		$core = self::$core;
+		$manage = self::$manage;
+		# ok redirect available
+		if ($manage->callback_ok_redirect)
+			return $core->redirect($manage->callback_ok_redirect);
+		# go home otherwise
+		return $core->redirect($core->get_home());
+	}
+
 	/**
 	 * Route callback for OAuth* URL callback.
 	 *
 	 * How unfortunate the namings are. First callback is Router
-	 * callback method. The second is OAuth* URL callback.
+	 * callback method. The second is OAuth* URL callback. This method
+	 * must always redirect, whether the result is ok or fail.
 	 *
 	 * @param dict $args Standard router HTTP variables of the form:
 	 *     @code
@@ -89,6 +99,10 @@ class OAuthRouteDefault extends Route {
 		$manage = self::$manage;
 		$admin = $manage::$admin;
 		$log = $manage::$logger;
+
+		if ($manage->is_logged_in())
+			# already signed in
+			return $this->_route_byway_ok();
 
 		# check params
 		$params = $args['params'];
@@ -168,11 +182,7 @@ class OAuthRouteDefault extends Route {
 			$this->token_name, $session_token));
 
 		# success
-		if ($manage->callback_ok_redirect)
-			# redirect
-			return $core->redirect($manage->callback_ok_redirect);
-		# or just go home
-		return $core->redirect($core->get_home());
+		return $this->_route_byway_ok();
 	}
 
 }
