@@ -37,11 +37,7 @@ EOD;
 	 * GET: /status
 	 */
 	public function route_status($args) {
-		$core = self::$core;
-		$retval = self::$ctrl->get_safe_user_data();
-		if ($retval[0] != 0)
-			return $core::pj([1, []], 403);
-		return $core::pj([0, $retval[1]]);
+		return self::$core::pj(self::$ctrl->get_safe_user_data());
 	}
 
 	/**

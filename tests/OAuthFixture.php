@@ -95,7 +95,7 @@ class ServiceFixture {
 		if ($path == '/10/api/me') {
 			$has_bearer = array_filter($headers, function($ele){
 				## incomplete OAuth1.0 request header
-				return strpos($ele, 'OAuth') !== false;
+				return self::is_in('OAuth ', $ele);
 			});
 			# response is in JSON
 			if (!$has_bearer)
@@ -107,7 +107,7 @@ class ServiceFixture {
 				## pass twitter
 				return [200, json_encode(self::send_profile())];
 			## not found for anything else
-			return [404, json_encode([])];
+			return [404, '[]'];
 		}
 	}
 
@@ -136,7 +136,7 @@ class ServiceFixture {
 		# 3) profile
 		if ($path == '/20/api/me') {
 			$has_bearer = array_filter($headers, function($ele){
-				return strpos($ele, 'Bearer') !== false;
+				return self::is_in('Bearer', $ele);
 			});
 			if (!$has_bearer)
 				return [403, null];
@@ -147,7 +147,7 @@ class ServiceFixture {
 				## pass reddit
 				return [200, json_encode(self::send_profile())];
 			## not found for anything else
-			return [404, json_encode([])];
+			return [404, '[]'];
 		}
 	}
 
