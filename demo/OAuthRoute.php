@@ -5,8 +5,8 @@ namespace Demo;
 
 
 /**
- * OAuthRoute default with several authentication facilities such
- * as signing in and out.
+ * OAuthRoute default with homepage and several authentication
+ * facilities such as signing in and out.
  */
 class OAuthRoute extends \BFITech\ZapAdmin\OAuthRouteDefault {
 
@@ -14,9 +14,23 @@ class OAuthRoute extends \BFITech\ZapAdmin\OAuthRouteDefault {
 	 * GET: /
 	 **/
 	public function route_home($args=null) {
-		self::$core->static_file(__DIR__ . '/static/index.html');
-		#require('home.php');
-		#self::$core::halt();
+		$mithril = '//cdnjs.cloudflare.com/ajax/libs/mithril/' +
+			'2.0.4/mithril.min.js';
+		self::$core::start_header(200, 3600);
+		echo <<<EOD
+<!doctype html>
+<html>
+<head>
+	<title>Test OAuth Client</title>
+	<link href=./static/style.css rel=stylesheet>
+</head>
+<body>
+<div id=wrap>
+	<div id=box></div>
+</div>
+<script src=${mithril}></script>
+<script src=./static/script.js></script>
+EOD;
 	}
 
 	/**

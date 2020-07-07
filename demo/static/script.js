@@ -1,72 +1,95 @@
 
-(function(){
-	"use strict";
-	angular.module('ZapOAuth', []).
-	controller('cred', function($scope, $http, $timeout){
-		var s = $scope;
+/* global m */
+/* eslint no-undef: "error" */
 
-		s.isIn = false;
-		s.canRefresh = false;
+const app = {
+	errMsg: null,
 
-		s.getStatus = function() {
-			$http.get('./status')
-			.then(function(ret){
-				s.isIn = true;
-				s.uid = ret.data.data.uid;
-				s.uname = ret.data.data.uname;
-				s.canRefresh = s.uname.indexOf('google') != -1;
-			}, function(){
-				s.isIn = false;
-				s.uid = null;
-				s.uname = null;
-			});
-		}
-		s.getStatus();
+	udata: null,
+	udataLoaded: false,
+	getUdata() {
+		m.request({
+			method: 'GET',
+			url: './status',
+		}).then(resp => {
+			this.udata = resp.data;
+		}).catch(() => {
+			this.udata  = null;
+		}).finally(() => {
+			this.udataLoaded = true;
+		});
+	},
 
-		s.signOut = function() {
-			$http.get('/logout')
-			.then(function(ret){
-				s.getStatus();
-			}, function(){
-			});
-		};
+	signIn(url) {
+		m.request({
+			method: 'POST',
+			url: url,
+		}).then(resp => {
+			top.location.href = resp.data;
+		}).catch(resp => {
+			app.errMsg = 'ERROR: Failed with errno: x0' +
+				resp.response.errno.toString(16) + '.';
+			setTimeout(() => {
+				app.errMsg = null;
+				m.redraw();
+			}, 8e3);
+		});
+	},
 
-		s.errMsg = null;
-		s.isSigningIn = false;
+	signInButton(url, innerText) {
+		return m('p', m('button', {
+			onclick(ev) {
+				app.signIn(url);
+				ev.target.blur();
+			},
+		}, innerText));
+	},
 
-		s.signIn = function(key) {
-			var authUrls = {
-				twitter: './byway/oauth/10/twitter/auth',
-				github:  './byway/oauth/20/github/auth',
-				google:  './byway/oauth/20/google/auth',
-				unknown: './byway/oauth/30/unknown/auth',
-			};
-			var authUrl = !authUrls[key]
-				? authUrls.unknown : authUrls[key];
-			s.isSigningIn = true;
-			$http.post(authUrl, {
-			}).then(function(ret){
-				top.location.href = ret.data.data;
-			}, function(){
-				s.errMsg = key == 'unknown'
-					? 'Service unknown.'
-					: 'Cannot connect to remove server.';
-				$timeout(function(){
-					s.errMsg = null;
-				}, 8e3);
-			}).then(function(){
-				s.isSigningIn = false;
-			});
-		};
+	viewOut() {
+		const btn = this.signInButton;
+		return [
+			m('div', [
+				btn('./byway/oauth/10/twitter/auth',
+					'OAuth1.0 with Twitter'),
+				btn('./byway/oauth/20/github/auth',
+					'OAuth2.0 with Github'),
+				btn('./byway/oauth/20/google/auth',
+					'OAuth2.0 with Google'),
+				btn('./byway/oauth/30/unknown/auth',
+					'Unknown Service'),
+			]),
+			m('p', m('strong', this.errMsg)),
+		];
+	},
 
-		s.refreshToken = function() {
-			$http.post('./refresh')
-			.then(function(ret){
-				console.log(ret.data);
-				s.isIn = true;
-			}, function(){
-				s.isIn = false;
-			});
-		};
-	});
-})();
+	viewIn() {
+		const self = this;
+		return m('div', [
+			m('p', 'uid:' + this.udata.uid),
+			m('p', 'uname:' + this.udata.uname),
+			m('p', m('button', {
+				onclick() {
+					m.request({
+						method: 'GET',
+						url: './logout',
+					}).then(() => self.getUdata());
+				},
+			}, 'SIGN OUT')),
+		]);
+	},
+
+	oninit() {
+		this.getUdata();
+	},
+
+	view() {
+		if (!this.udataLoaded)
+			return [];
+		if (this.udata === null)
+			return this.viewOut();
+		return this.viewIn();
+	},
+}
+
+// root
+m.mount(document.querySelector('#box'), app);
