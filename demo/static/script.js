@@ -72,7 +72,9 @@ const app = {
 					m.request({
 						method: 'GET',
 						url: './logout',
-					}).then(() => self.getUdata());
+					}).then(() => {}).catch(() => {}).finally(() => {
+						self.udata = null;
+					});
 				},
 			}, 'SIGN OUT')),
 		]);
