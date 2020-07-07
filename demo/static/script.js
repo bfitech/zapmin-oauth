@@ -27,7 +27,7 @@ const app = {
 		}).then(resp => {
 			top.location.href = resp.data;
 		}).catch(resp => {
-			app.errMsg = 'ERROR: Failed with errno: x0' +
+			app.errMsg = 'ERROR: Failed with errno: 0x0' +
 				resp.response.errno.toString(16) + '.';
 			setTimeout(() => {
 				app.errMsg = null;

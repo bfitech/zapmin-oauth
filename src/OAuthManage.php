@@ -249,7 +249,6 @@ class OAuthManage extends AuthManage {
 		$conf = $this->service_configs[$key];
 		extract($conf);
 
-		// @codeCoverageIgnoreStart
 		$perm = $service_type == '10' ?
 			new OAuth10Permission(
 				$consumer_key, $consumer_secret,
@@ -261,7 +260,6 @@ class OAuthManage extends AuthManage {
 				$url_request_token_auth, $url_access_token,
 				$url_callback, $scope
 			);
-		// @codeCoverageIgnoreEnd
 
 		# use custom client for permission instance
 		if (method_exists($this, 'http_client_custom')) {
@@ -338,7 +336,6 @@ class OAuthManage extends AuthManage {
 		$conf = $this->service_configs[$key];
 		extract($conf);
 
-		// @codeCoverageIgnoreStart
 		$act = $service_type == '10' ?
 			new OAuth10Action(
 				$conf['consumer_key'], $conf['consumer_secret'],
@@ -349,7 +346,6 @@ class OAuthManage extends AuthManage {
 				$access_token, $refresh_token,
 				$conf['url_access_token']
 			);
-		// @codeCoverageIgnoreEnd
 
 		# use custom client for action instance
 		if (method_exists($this, 'http_client_custom')) {

@@ -89,7 +89,6 @@ class OAuthRouteDev extends OAuthRouteDefault {
 		$access_token = md5($uname . $email . mt_rand());
 		$access_token_secret = $service_type != '10' ? null :
 			$access_token_secret = "xxx-" . $access_token;
-		// @codeCoverageIgnoreStart
 		$token = $manage->add_user(
 			$service_type, $service_name,
 			$uname, $access_token, $access_token_secret, null,
@@ -98,7 +97,6 @@ class OAuthRouteDev extends OAuthRouteDefault {
 				'email' => $email,
 			]
 		);
-		// @codeCoverageIgnoreEnd
 		self::$ctrl->set_token_value($token);
 
 		$core::send_cookie(

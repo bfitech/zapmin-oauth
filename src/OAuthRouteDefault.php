@@ -149,11 +149,9 @@ class OAuthRouteDefault extends Route {
 			# OAuth2.0 only
 			$refresh_token = null;
 
-		// @codeCoverageIgnoreStart
 		$act = $manage->get_action_instance(
 			$service_type, $service_name, $access_token,
 			$access_token_secret, $refresh_token);
-		// @codeCoverageIgnoreEnd
 
 		# fetch profile, specific to each service
 
@@ -167,13 +165,11 @@ class OAuthRouteDefault extends Route {
 			"ZapOAuth: Profile fetched: %s.", json_encode($profile)));
 		$uname = $profile['uname'];
 
-		// @codeCoverageIgnoreStart
 		$session_token = $manage->add_user(
 			$service_type, $service_name,
 			$uname, $access_token, $access_token_secret,
 			$refresh_token, $profile
 		);
-		// @codeCoverageIgnoreEnd
 		$expiration = $admin::$store->time() + $admin->get_expiration();
 
 		# always autologin on success
