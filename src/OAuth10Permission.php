@@ -56,13 +56,13 @@ class OAuth10Permission extends OAuthCommon {
 	) {
 		$params = [
 			'oauth_version' => '1.0',
-			'oauth_nonce' => self::generate_nonce(),
-			'oauth_timestamp' => self::generate_timestamp(),
+			'oauth_nonce' => static::generate_nonce(),
+			'oauth_timestamp' => static::generate_timestamp(),
 			'oauth_consumer_key' => $this->consumer_key,
 			'oauth_signature_method' => 'HMAC-SHA1',
 		];
-		// extra parameters, will override default params
-		// if they collide
+		# extra parameters, will override default params
+		# if they collide
 		foreach ($extra_params as $k => $v)
 			$params[$k] = $v;
 

@@ -44,9 +44,8 @@ class OAuthRouteDefault extends Route {
 		$params = $args['params'];
 		if (!Common::check_idict($params,
 			['service_type', 'service_name'])
-		) {
+		)
 			return $core::pj([OAuthError::INCOMPLETE_DATA], 404);
-		}
 		extract($params);
 
 		$perm = self::$manage->get_permission_instance(

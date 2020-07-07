@@ -74,7 +74,7 @@ class OAuth20Permission extends OAuthCommon {
 		$params = [
 			'client_id' => $this->client_id,
 			'scope' => $this->scope,
-			'state' => self::generate_nonce(),
+			'state' => static::generate_nonce(),
 			'redirect_uri' => $this->callback_uri,
 			'response_type' => 'code',
 		];
@@ -139,7 +139,7 @@ class OAuth20Permission extends OAuthCommon {
 			'code' => $code,
 			'redirect_uri' => $redirect_uri,
 			'grant_type' => 'authorization_code',
-			'state' => self::generate_nonce(),
+			'state' => static::generate_nonce(),
 		];
 
 		$resp = $this->http_client([
