@@ -70,7 +70,7 @@ class OAuthManage extends AuthManage {
 		switch ($key) {
 			case 'check_table':
 				if ($val)
-					$this->oauth_create_table();
+					$this->create_table();
 				break;
 		}
 		return $this;
@@ -86,7 +86,7 @@ class OAuthManage extends AuthManage {
 	 *
 	 * @throws BFITech.ZapStore.SQLError on failure.
 	 */
-	private function oauth_create_table() {
+	private function create_table() {
 		$sql = self::$admin::$store;
 		$log = self::$logger;
 

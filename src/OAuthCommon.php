@@ -49,14 +49,14 @@ class OAuthCommon {
 	 * userland.
 	 *
 	 * To override, e.g. for testing, create a method http_client_custom
-	 * on the subclass of BFITech\\ZapAdmin\\OAuthManage, with the exact
-	 * same args with those in BFITech\\ZapCore\\Common::http_client.
+	 * on the subclass of OAuthManage, with the exact same args with
+	 * those in Common::http_client.
 	 *
 	 * @param array $kwargs Request parameters.
 	 * @return array A list of the form `[HTTP code, response body]`.
 	 *     HTTP code is -1 for invalid method, 0 for failing connection,
 	 *     and any of standard code for successful connection.
-	 * @see BFITech\\ZapCore\\Common::http_client
+	 * @see Common::http_client
 	 */
 	final public function http_client(array $kwargs) {
 		if (
