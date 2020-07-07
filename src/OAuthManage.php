@@ -52,6 +52,9 @@ class OAuthManage extends AuthManage {
 	/** Redirect URL after failed callback. */
 	public $callback_fail_redirect = null;
 
+	/** Service config cache. */
+	private $service_configs = [];
+
 	/**
 	 * Constructor.
 	 *
@@ -69,6 +72,8 @@ class OAuthManage extends AuthManage {
 	 * This table is not for authentication since it's done by
 	 * OAuthStore::store::status. This is to retrieve OAuth* tokens
 	 * and use them for request or refresh.
+	 *
+	 * @note This check is run on every request.
 	 */
 	private function oauth_create_table() {
 		$sql = self::$admin::$store;
@@ -191,15 +196,16 @@ class OAuthManage extends AuthManage {
 		$log = self::$logger;
 
 		if (!in_array($service_type, ['10', '20'])) {
-			$msg = "Invalid service type: '".$service_type."'.";
-			$log->error($msg);
+			$msg = sprintf("Service type invalid: '%s'",
+				$service_type);
+			$log->error("ZapOAuth: " . $msg);
 			throw new OAuthError($msg);
 		}
 
-		$key = $service_name . '-' . $service_type;
+		$key = $service_type . '-' . $service_name;
 		if (isset($this->service_configs[$key])) {
-			$msg = "Missing configurations";
-			$log->error("OAuth: $msg");
+			$log->error(sprintf(
+				"ZapOAuth: Service already registered: '%s'", $key));
 			return false;
 		}
 
@@ -214,7 +220,7 @@ class OAuthManage extends AuthManage {
 			'url_callback' => $url_callback,
 			'scope' => $scope,                  # 2.0 only
 		];
-		$log->debug("ZapOAuth: Add new service: " . json_encode($conf));
+		$log->debug("ZapOAuth: Service added: " . json_encode($conf));
 	}
 
 	# super-oauth methods
@@ -230,7 +236,7 @@ class OAuthManage extends AuthManage {
 	public function get_permission_instance(
 		string $service_type, string $service_name
 	) {
-		$key = $service_name . '-' . $service_type;
+		$key = $service_type . '-' . $service_name;
 		if (!isset($this->service_configs[$key]))
 			# key invalid
 			return null;
@@ -324,7 +330,7 @@ class OAuthManage extends AuthManage {
 		string $access_token, string $access_token_secret=null,
 		string $refresh_token=null
 	) {
-		$key = $service_name . '-' . $service_type;
+		$key = $service_type . '-' . $service_name;
 		if (!isset($this->service_configs[$key]))
 			# key invalid
 			return null;

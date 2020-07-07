@@ -33,13 +33,16 @@ class OAuth10Test extends TestCase {
 	protected static $logger;
 
 	public static function setUpBeforeClass() {
-		self::$logger = new Logger(Logger::ERROR, '/dev/null');
+		$logfile = self::tdir(__FILE__) . '/zapmin-oauth-10.log';
+		if (file_exists($logfile))
+			unlink($logfile);
+		self::$logger = new Logger(Logger::DEBUG, $logfile);
 	}
 
 	private function register_services() {
-		$store = new SQLite3(
+		$sql = new SQLite3(
 			['dbname' => ':memory:'], self::$logger);
-		$admin = new Admin($store, self::$logger);
+		$admin = new Admin($sql, self::$logger);
 		$admin
 			->config('expire', 3600)
 			->config('token_name', 'testing')

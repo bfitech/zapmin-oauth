@@ -33,7 +33,10 @@ class OAuth20Test extends TestCase {
 	protected static $logger;
 
 	public static function setUpBeforeClass() {
-		self::$logger = new Logger(Logger::ERROR, '/dev/null');
+		$logfile = self::tdir(__FILE__) . '/zapmin-oauth-20.log';
+		if (file_exists($logfile))
+			unlink($logfile);
+		self::$logger = new Logger(Logger::ERROR, $logfile);
 	}
 
 	private function register_services() {

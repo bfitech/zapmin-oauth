@@ -39,20 +39,27 @@ class OAuthRouteDefault extends Route {
 	 *     `service_type` and `service_name` in `params` key.
 	 */
 	public function route_byway_auth(array $args) {
-		$service_type = $service_name = null;
 		$core = self::$core;
+		$log = self::$manage::$logger;
+
 		$params = $args['params'];
 		if (!Common::check_idict($params,
 			['service_type', 'service_name'])
 		)
 			return $core::pj([OAuthError::INCOMPLETE_DATA], 404);
+
+		$service_type = $service_name = null;
 		extract($params);
 
 		$perm = self::$manage->get_permission_instance(
 			$service_type, $service_name);
-		if (!$perm)
+		if (!$perm) {
 			# service unknown
+			$log->info(sprintf(
+				"ZapOAuth: Auth to unknown service: '%s-%s'",
+				$service_type, $service_name));
 			return $core::pj([OAuthError::SERVICE_UNKNOWN], 404);
+		}
 
 		$perm = self::$manage->finetune_permission($args, $perm);
 
@@ -93,11 +100,10 @@ class OAuthRouteDefault extends Route {
 	 *     @endcode
 	 */
 	public function route_byway_callback(array $args) {
-
 		$core = self::$core;
 		$manage = self::$manage;
-		$admin = self::$manage::$admin;
-		$log = self::$ctrl::$logger;
+		$admin = $manage::$admin;
+		$log = $manage::$logger;
 
 		$params = $args['params'];
 		if (!Common::check_idict($params,
@@ -105,27 +111,33 @@ class OAuthRouteDefault extends Route {
 		) {
 			return $core->abort(404);
 		}
+
+		$service_type = $service_name = null;
 		extract($params);
 
 		$perm = $manage->get_permission_instance(
 			$service_type, $service_name);
 		if (!$perm) {
-			$log->info('ZapOAuth: attempts to use unknown service.');
+			# service unknown
+			$log->info(sprintf(
+				"ZapOAuth: Callback to unknown service: '%s-%s'",
+				$service_type, $service_name));
 			return $core->abort(404);
 		}
 		$perm = $manage->finetune_permission($args, $perm);
 
 		// @todo Tell $this->_route_byway_failed to differ between
-		// provider error, server error, or user rejects authentication.
-		// This may be different from one provider to another.
+		// provider error, server error, or user rejecting
+		// authentication. This may be different from one provider to
+		// another.
 		$ret = $perm->site_callback($args['get']);
 		if ($ret[0] !== 0) {
 			$log->info(
-				'ZapOAuth: access token not obtained from callback.');
+				'ZapOAuth: Callback has no access token.');
 			return $this->_route_byway_failed();
 		}
 		$log->info(
-			'ZapOAuth: Callback response: ' . json_encode($ret[1]));
+			'ZapOAuth: Callback ok, response: ' . json_encode($ret[1]));
 		extract($ret[1]);
 
 		# save obtained tokens to properties
@@ -148,11 +160,11 @@ class OAuthRouteDefault extends Route {
 		$profile = $manage->fetch_profile(
 			$act, $service_type, $service_name);
 		if (!$profile || !isset($profile['uname'])) {
-			$log->error('ZapOAuth: fetching profile failed.');
+			$log->error('ZapOAuth: Fetching profile failed.');
 			return $this->_route_byway_failed();
 		}
 		$log->debug(sprintf(
-			"ZapOAuth: fetch profile : %s.", json_encode($profile)));
+			"ZapOAuth: Profile fetched: %s.", json_encode($profile)));
 		$uname = $profile['uname'];
 
 		// @codeCoverageIgnoreStart
@@ -170,7 +182,7 @@ class OAuthRouteDefault extends Route {
 		$core->send_cookie($this->token_name, $session_token,
 			$expiration, '/');
 		$log->debug(sprintf(
-			"ZapOAuth: set-cookie [%s] <- %s.",
+			"ZapOAuth: Set cookie: [%s -> %s].",
 			$this->token_name, $session_token));
 
 		# success
