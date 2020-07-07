@@ -42,10 +42,9 @@ use BFITech\ZapOAuth\OAuth20Action;
  */
 class OAuthManage extends AuthManage {
 
-	// There's no default facility to change these by default.
-	// Only subclass can take advantage of this.
 	/** Redirect URL after successful callback. */
 	public $callback_ok_redirect = null;
+
 	/** Redirect URL after failed callback. */
 	public $callback_fail_redirect = null;
 
@@ -61,9 +60,10 @@ class OAuthManage extends AuthManage {
 		$log = self::$logger;
 
 		try {
-			$sql->query("SELECT 1 FROM uoauth");
+			$sql->query("SELECT 1 FROM uoauth LIMIT 1");
 			return;
 		} catch (SQLError $e) {
+			// no-op
 		}
 
 		foreach([
@@ -83,8 +83,7 @@ class OAuthManage extends AuthManage {
 
 		$index = $sql->stmt_fragment('index');
 		$engine = $sql->stmt_fragment('engine');
-		# Each row is associated with a session.sid. Associate the
-		# two tables with $this->store->status() return value.
+		# Each row is associated with a session.sid.
 		$table = sprintf("
 			CREATE TABLE uoauth (
 				aid %s,
