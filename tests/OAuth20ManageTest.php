@@ -48,8 +48,7 @@ class OAuth20Test extends TestCase {
 			->config('token_name', 'testing')
 			->config('check_tables', true);
 		$manage = (new OAuth20Manage($admin, self::$logger))
-			->config('check_table', true)
-			->init();
+			->config('check_table', true);
 
 		$make_service = function($srv) use($manage) {
 			call_user_func_array([$manage, 'add_service'],[

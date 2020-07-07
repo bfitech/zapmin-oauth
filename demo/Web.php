@@ -65,10 +65,8 @@ class Web {
 		$ctrl = new AuthCtrl($admin, $log);
 
 		# manage
-		$manage = new OAuthManage($admin, $log);
-		$manage
-			->config('check_table', $check_table)
-			->init();
+		$manage = (new OAuthManage($admin, $log))
+			->config('check_table', $check_table);
 
 		if ($check_table)
 			# stop table checks

@@ -63,11 +63,7 @@ class OAuthRouteDevTest extends TestCase {
 
 		### OAuthManage instance.
 		$manage = (new OAuthManage($admin, $log))
-			->config('check_table', true)
-			->init()
-			# this won't take effect
-			->config('check_table', false)
-			->init();
+			->config('check_table', true);
 
 		$manage->add_service(
 			'10', 'twitter',
