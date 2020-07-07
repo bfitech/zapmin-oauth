@@ -131,7 +131,10 @@ class OAuthRouteTest extends TestCase {
 		$ctrl = new AuthCtrl($admin, $log);
 
 		### OAuthManage instance.
-		$manage = new OAuthManagePatched($admin, $log);
+		$manage = (new OAuthManagePatched($admin, $log))
+			->config('check_table', true)
+			->init();
+			#->init()->config('check_table', false);
 
 		return [$rdev, $ctrl, $manage];
 	}

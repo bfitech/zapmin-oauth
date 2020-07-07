@@ -47,7 +47,9 @@ class OAuth10Test extends TestCase {
 			->config('expire', 3600)
 			->config('token_name', 'testing')
 			->config('check_tables', true);
-		$manage = new OAuth10Manage($admin, self::$logger);
+		$manage = (new OAuth10Manage($admin, self::$logger))
+			->config('check_table', true)
+			->init();
 
 		try {
 			$manage->add_service(

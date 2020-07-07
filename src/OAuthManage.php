@@ -55,15 +55,48 @@ class OAuthManage extends AuthManage {
 	/** Service config cache. */
 	private $service_configs = [];
 
+	private $initialized = false;
+	private $check_table = false;
+
 	/**
-	 * Constructor.
+	 * Configure.
 	 *
-	 * @param Admin $admin Admin instance.
-	 * @param Logger $logger Logger instance.
+	 * Available configurables:
+	 *   - (bool)check_table: Check table existence. To prevent this
+	 *     check on every call, save previous state, e.g. on config,
+	 *     and run only when necessary.
+	 *
+	 * Call OAuthManage::init for configuration to take effect.
+	 *
+	 * @param string $key Config key name.
+	 * @param string $val Config value.
+	 * @return instance of OAuthManage.
 	 */
-	public function __construct(Admin $admin, Logger $logger=null) {
-		parent::__construct($admin, $logger);
-		$this->oauth_create_table();
+	public function config(string $key, string $val=null) {
+		if ($this->initialized)
+			return $this;
+		switch ($key) {
+			case 'check_table':
+				$this->check_table = (bool)$val;
+				break;
+		}
+		return $this;
+	}
+
+	/**
+	 * Initialize.
+	 *
+	 * Currently, this only tries to initialize table.
+	 *
+	 * @return instance of OAuthManage.
+	 */
+	public function init() {
+		if ($this->initialized)
+			return $this;
+		if ($this->check_table)
+			$this->oauth_create_table();
+		$this->initialized = true;
+		return $this;
 	}
 
 	/**
@@ -71,9 +104,8 @@ class OAuthManage extends AuthManage {
 	 *
 	 * This table is not for authentication since it's done by
 	 * OAuthStore::store::status. This is to retrieve OAuth* tokens
-	 * and use them for request or refresh.
-	 *
-	 * @note This check is run on every request.
+	 * and use them for request or refresh. Only executed if
+	 * `check_table` config is set to true.
 	 */
 	private function oauth_create_table() {
 		$sql = self::$admin::$store;
@@ -432,7 +464,7 @@ class OAuthManage extends AuthManage {
 
 		$sql = self::$admin::$store;
 
-		# save additional udate from profile retriever if exists
+		# save additional udata from profile retriever if exists
 
 		$bio = [];
 		foreach (['fname', 'email', 'site'] as $key) {

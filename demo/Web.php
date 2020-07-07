@@ -4,6 +4,9 @@
 namespace Demo;
 
 
+use BFITech\ZapCore\Common;
+use BFITech\ZapCore\Config;
+use BFITech\ZapCore\ConfigError;
 use BFITech\ZapCore\Logger;
 use BFITech\ZapCore\Router;
 use BFITech\ZapStore\SQLite3;
@@ -25,34 +28,63 @@ class Web {
 
 	private function init_zcore() {
 		$datadir = __DIR__ . '/data';
-		if (!is_dir($datadir))
-			mkdir($ddatadir, 0755);
+		if (!is_dir($datadir) && false === @mkdir($datadir, 0755))
+			die(sprintf(
+				"User '%s' cannot create directory '%s'.</pre>",
+				Common::exec('whoami')[0], $datadir));
 
-		$logger = new Logger(
-			Logger::DEBUG, $datadir . '/zapmin-oauth.log');
-		$core = (new Router)->config('logger', $logger);
-		$store = new SQLite3(
-			['dbname' => $datadir . '/zapmin-oauth.sq3'], $logger);
+		$log = new Logger(
+			Logger::DEBUG, $datadir . '/demo.log');
+		$core = (new Router)->config('logger', $log);
+		$sql = new SQLite3(
+			['dbname' => $datadir . '/demo.sq3'], $log);
 
-		$admin = new Admin($store, $logger);
+		# config file
+		$cnfile = $datadir . '/config.json';
+		if (!file_exists($cnfile))
+			file_put_contents($cnfile, '[]');
+
+		# check table status from config; this is shared between
+		# Admin and OAuthManage
+		$cnf = new Config($datadir . '/config.json');
+		$check_table = true;
+		try {
+			$check_table = (bool)$cnf->get('check_table');
+		} catch(ConfigError $err) {
+			$cnf->add('check_table', true); 
+		}
+
+		# admin
+		$admin = new Admin($sql, $log);
 		$admin
 			->config('expire', 3600)
 			->config('token_name', 'testing')
-			->config('check_tables', true);
-		$ctrl = new AuthCtrl($admin, $logger);
-		$manage = new OAuthManage($admin, $logger);
+			->config('check_tables', $check_table);
 
-		# config
-		$cnfile = $datadir . '/config.json';
-		if (!is_file($cnfile))
-			copy(__DIR__ . '/config.json-sample', $cnfile);
-		$config = json_decode(file_get_contents($cnfile));
+		# control
+		$ctrl = new AuthCtrl($admin, $log);
 
-		# add service
+		# manage
+		$manage = new OAuthManage($admin, $log);
+		$manage
+			->config('check_table', $check_table)
+			->init();
+
+		if ($check_table)
+			# stop table checks
+			$cnf->set('check_table', false);
+
+		# read service file or copy from sample
+		$srvfile = $datadir . '/services.json';
+		if (!is_file($srvfile))
+			copy(__DIR__ . '/services.json-sample', $srvfile);
+		$services = Config::djson(file_get_contents($srvfile, true));
+
+		# add services
 		# Make sure callback URLs in the configuration and on remote
 		# server match.
-		foreach ($config as $cfg)
-			call_user_func_array([$manage, 'add_service'], $cfg);
+		foreach ($services as $service)
+			call_user_func_array([$manage, 'add_service'], $service);
 
 		$this->zcore = new OAuthRoute($core, $ctrl, $manage);
 	}

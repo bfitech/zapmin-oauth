@@ -38,35 +38,6 @@ class OAuthRouteDevTest extends TestCase {
 		self::$logger->info("TEST DONE.");
 	}
 
-	private function create_route() {
-		$admin = new Admin(self::$store, self::$logger);
-		$admin
-			->config('expire', 3600)
-			->config('token_name', 'testing')
-			->config('check_tables', true);
-		$ctrl = new AuthCtrl($admin, self::$logger);
-		$manage = new OAuthManage($admin, self::$logger);
-
-		$manage->add_service(
-			'10', 'twitter',
-			'test-consumer-key', 'test-consumer-secret',
-			'http://twitter.example.org/10/auth_request',
-			'http://twitter.example.org/10/auth',
-			'http://twitter.example.org/10/access',
-			null, 'http://localhost'
-		);
-		$manage->add_service(
-			'20', 'tumblr',
-			'test-consumer-key', 'test-consumer-secret',
-			'http://tumblr.example.org/10/auth_request',
-			'http://tumblr.example.org/10/auth',
-			'http://tumblr.example.org/10/access',
-			null, 'http://localhost'
-		);
-		$manage->callback_ok_redirect = '/ok';
-		return new OAuthRouteDev(self::$core, $ctrl, $manage);
-	}
-
 	private function make_zcore() {
 		### RoutingDev instance. Renew every time after mock request is
 		### complete. Do not reuse.
@@ -91,7 +62,13 @@ class OAuthRouteDevTest extends TestCase {
 		$ctrl = new AuthCtrl($admin, $log);
 
 		### OAuthManage instance.
-		$manage = new OAuthManage($admin, $log);
+		$manage = (new OAuthManage($admin, $log))
+			->config('check_table', true)
+			->init()
+			# this won't take effect
+			->config('check_table', false)
+			->init();
+
 		$manage->add_service(
 			'10', 'twitter',
 			'test-consumer-key', 'test-consumer-secret',
