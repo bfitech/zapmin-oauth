@@ -11,7 +11,7 @@ use BFITech\ZapCore\Common;
  * OAuthCommon class.
  *
  * Do not use this class and its subclasses directly. Use
- * BFITech\\ZapAdmin\\OAuthManage instead.
+ * BFITech.ZapAdmin.OAuthManage instead.
  */
 class OAuthCommon {
 
@@ -49,8 +49,8 @@ class OAuthCommon {
 	 * userland.
 	 *
 	 * To override, e.g. for testing, create a method http_client_custom
-	 * on the subclass of OAuthManage, with the exact same args with
-	 * those in Common::http_client.
+	 * on the subclass of BFITech.ZapAdmin.OAuthManage, with the exact
+	 * same args with those in Common::http_client.
 	 *
 	 * @param array $kwargs Request parameters.
 	 * @return array A list of the form `[HTTP code, response body]`.

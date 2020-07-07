@@ -63,7 +63,7 @@ class OAuthManage extends AuthManage {
 	 *
 	 * @param string $key Config key name.
 	 * @param string $val Config value.
-	 * @return Instance of OAuthManage.
+	 * @return OAuthManage Instance of this class for chaining.
 	 * @throws BFITech.ZapStore.SQLError on table creation failure.
 	 */
 	public function config(string $key, string $val=null) {
@@ -388,10 +388,12 @@ class OAuthManage extends AuthManage {
 	}
 
 	/**
-	 * Add new user after successful authorization.
+	 * Middleware to add new user after successful authorization.
 	 *
-	 * Only call from OAuthRouteDefault::route_byway_callback and not
-	 * from anywhere else. For testing, use accessor in subclasses.
+	 * This allow user to self-add themselves to the database with
+	 * AuthManage::self_add_passwordless in the backend. Called by
+	 * OAuthRouteDefault::route_byway_callback after successful
+	 * OAuth site callback.
 	 *
 	 * @param string $service_type '10' for OAuth1, '20' for OAuth2.
 	 * @param string $service_name Service nickname, e.g. 'github'.
@@ -403,8 +405,9 @@ class OAuthManage extends AuthManage {
 	 * @param string $refresh_token Refresh token, OAuth2 only.
 	 * @param array $profile Additional profile dict obtained by
 	 *     successful $this->fetch_profile().
-	 *
 	 * @return string Session token.
+	 * @see AuthManage::self_add_passwordless
+	 * @see OAuthRouteDefault::route_byway_callback
 	 */
 	public function add_user(
 		string $service_type, string $service_name, string $uname,
@@ -413,7 +416,6 @@ class OAuthManage extends AuthManage {
 	) {
 		# build passwordless account using obtained uname with uservice
 		# having the form 'oauth%service_type%[%service_name%]
-
 		$uname = rawurlencode($uname);
 		$uservice = sprintf(
 			'oauth%s[%s]', $service_type, $service_name);
@@ -423,7 +425,6 @@ class OAuthManage extends AuthManage {
 		];
 
 		# register passwordless
-
 		$retval = $this->self_add_passwordless($args);
 		$udata = $retval[1];
 		$session_token = $udata['token'];
@@ -431,7 +432,6 @@ class OAuthManage extends AuthManage {
 		$sql = self::$admin::$store;
 
 		# save additional udata from profile retriever if exists
-
 		$bio = [];
 		foreach (['fname', 'email', 'site'] as $key) {
 			if (isset($profile[$key])) {
@@ -449,9 +449,7 @@ class OAuthManage extends AuthManage {
 			]);
 
 		# save to oauth table
-
 		$sid = $retval[1]['sid'];
-		# inserted data
 		$ins = [
 			'sid' => $sid,
 			'oname' => $service_name,

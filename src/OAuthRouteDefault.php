@@ -5,32 +5,16 @@ namespace BFITech\ZapAdmin;
 
 
 use BFITech\ZapCore\Common;
-use BFITech\ZapCore\Router;
 use BFITech\ZapOAuth\OAuthError;
 
 
 /**
  * Default routers.
  *
- * This is usually sufficient for standard OAuth authentication.
- * See ./demo for usage.
- *
- * @see Route.
+ * This is sufficient for functional OAuth authentication. See ./demo
+ * for usage.
  */
 class OAuthRouteDefault extends Route {
-
-	/**
-	 * Constructor.
-	 *
-	 * @param Router $core Router instance.
-	 * @param AuthCtrl $ctrl AuthCtrl instance.
-	 * @param AuthManage $manage AuthManage instance.
-	 */
-	public function __construct(
-		Router $core, AuthCtrl $ctrl, OAuthManage $manage
-	) {
-		parent::__construct($core, $ctrl, $manage);
-	}
 
 	/**
 	 * Route callback for OAuth* token request URL generator.
@@ -42,15 +26,16 @@ class OAuthRouteDefault extends Route {
 		$core = self::$core;
 		$log = self::$manage::$logger;
 
+		# check params
 		$params = $args['params'];
 		if (!Common::check_idict($params,
 			['service_type', 'service_name'])
 		)
 			return $core::pj([OAuthError::INCOMPLETE_DATA], 404);
-
 		$service_type = $service_name = null;
 		extract($params);
 
+		# get permission instance
 		$perm = self::$manage->get_permission_instance(
 			$service_type, $service_name);
 		if (!$perm) {
@@ -60,9 +45,9 @@ class OAuthRouteDefault extends Route {
 				$service_type, $service_name));
 			return $core::pj([OAuthError::SERVICE_UNKNOWN], 404);
 		}
-
 		$perm = self::$manage->finetune_permission($args, $perm);
 
+		# get the access token
 		$url = $perm->get_access_token_url();
 		if (!$url)
 			# access token url not obtained
@@ -105,16 +90,17 @@ class OAuthRouteDefault extends Route {
 		$admin = $manage::$admin;
 		$log = $manage::$logger;
 
+		# check params
 		$params = $args['params'];
 		if (!Common::check_idict($params,
 			['service_name', 'service_type'])
 		) {
 			return $core->abort(404);
 		}
-
 		$service_type = $service_name = null;
 		extract($params);
 
+		# get permission instance
 		$perm = $manage->get_permission_instance(
 			$service_type, $service_name);
 		if (!$perm) {
@@ -126,6 +112,7 @@ class OAuthRouteDefault extends Route {
 		}
 		$perm = $manage->finetune_permission($args, $perm);
 
+		# site callback
 		// @todo Tell $this->_route_byway_failed to differ between
 		// provider error, server error, or user rejecting
 		// authentication. This may be different from one provider to
@@ -141,7 +128,6 @@ class OAuthRouteDefault extends Route {
 		extract($ret[1]);
 
 		# save obtained tokens to properties
-
 		if (!isset($access_token_secret))
 			# OAuth1.0 only
 			$access_token_secret = null;
@@ -149,12 +135,12 @@ class OAuthRouteDefault extends Route {
 			# OAuth2.0 only
 			$refresh_token = null;
 
+		# get action instance
 		$act = $manage->get_action_instance(
 			$service_type, $service_name, $access_token,
 			$access_token_secret, $refresh_token);
 
-		# fetch profile, specific to each service
-
+		# use action instance to fetch profile, specific to each service
 		$profile = $manage->fetch_profile(
 			$act, $service_type, $service_name);
 		if (!$profile || !isset($profile['uname'])) {
@@ -165,15 +151,15 @@ class OAuthRouteDefault extends Route {
 			"ZapOAuth: Profile fetched: %s.", json_encode($profile)));
 		$uname = $profile['uname'];
 
+		# add new user
 		$session_token = $manage->add_user(
 			$service_type, $service_name,
 			$uname, $access_token, $access_token_secret,
 			$refresh_token, $profile
 		);
-		$expiration = $admin::$store->time() + $admin->get_expiration();
 
 		# always autologin on success
-
+		$expiration = $admin::$store->time() + $admin->get_expiration();
 		self::$ctrl->set_token_value($session_token);
 		$core->send_cookie($this->token_name, $session_token,
 			$expiration, '/');

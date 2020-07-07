@@ -92,7 +92,8 @@ class OAuth20Permission extends OAuthCommon {
 	 * redirect to callback URL, then use tokens to obtain access
 	 * tokens from provider.
 	 *
-	 * Use this in OAuthRoute::route_byway_callback only.
+	 * Use this in
+	 * BFITech.ZapAdmin.OAuthRouteDefault::route_byway_callback only.
 	 *
 	 * @param array $get Callback GET parameters sent by remote service,
 	 *     with keys: `code` and `state`.
