@@ -26,7 +26,7 @@ use BFITech\ZapOAuth\OAuth20Action;
  * 2. Instantiate OAuthManageCustom $so. Let's call this instance
  *    super-oauth.
  * 3. Register services with $so->add_service() with
- *    appropriate configuration.
+ *    appropriate service parameters.
  * 4. Use $perm = $so->get_permission_instance() that will
  *    initiate sequence of acquiring access token, along with
  *    access token secret for OAuth1 and refresh token for OAuth2.
@@ -38,7 +38,7 @@ use BFITech\ZapOAuth\OAuth20Action;
  *
  * To override default http client, e.g. for testing, create a method
  * http_client_custom on your super-oauth, with the exact same args with
- * those in BFITech\\ZapCore\\Common::http_client.
+ * those in Common::http_client.
  *
  * @if TRUE
  * @SuppressWarnings(PHPMD.LongVariable)
@@ -52,7 +52,7 @@ class OAuthManage extends AuthManage {
 	/** Redirect URL after failed callback. */
 	public $callback_fail_redirect = null;
 
-	/** Service info cache. */
+	/** Service info hash table. */
 	private $services = [];
 
 	/**
@@ -63,7 +63,8 @@ class OAuthManage extends AuthManage {
 	 *
 	 * @param string $key Config key name.
 	 * @param string $val Config value.
-	 * @return instance of OAuthManage.
+	 * @return Instance of OAuthManage.
+	 * @throws BFITech.ZapStore.SQLError on table creation failure.
 	 */
 	public function config(string $key, string $val=null) {
 		switch ($key) {
@@ -83,7 +84,7 @@ class OAuthManage extends AuthManage {
 	 * and use them for request or refresh. Only executed if
 	 * `check_table` config is set to true.
 	 *
-	 * @throws OAuthError on failure.
+	 * @throws BFITech.ZapStore.SQLError on failure.
 	 */
 	private function oauth_create_table() {
 		$sql = self::$admin::$store;
@@ -101,13 +102,7 @@ class OAuthManage extends AuthManage {
 			"DROP VIEW IF EXISTS v_uoauth;",
 			"DROP TABLE IF EXISTS uoauth;",
 		] as $drop) {
-			// @codeCoverageIgnoreStart
-			if (!$sql->query_raw($drop)) {
-				$msg = "Cannot drop data:" . $sql->errmsg;
-				$log->error("ZapOAuth: $msg");
-				throw new OAuthStoreError($msg);
-			}
-			// @codeCoverageIgnoreEnd
+			$sql->query_raw($drop);
 		}
 
 		# token table
@@ -126,17 +121,11 @@ class OAuthManage extends AuthManage {
 				refresh TEXT           -- OAuth2.0 only
 			) %s;
 		", $index, $engine);
-		if (!$sql->query_raw($table)) {
-			// @codeCoverageIgnoreStart
-			$msg = "Cannot create uoauth table:" . $sql->errmsg;
-			$log->error("ZapOAuth: $msg");
-			throw new OAuthStoreError($msg);
-			// @codeCoverageIgnoreEnd
-		}
+		$sql->query_raw($table);
 
 		# session view
 
-		$session_view = ("
+		$session_view = "
 			CREATE VIEW v_uoauth AS
 				SELECT
 					uoauth.*,
@@ -145,14 +134,9 @@ class OAuthManage extends AuthManage {
 				FROM uoauth, usess
 				WHERE
 					uoauth.sid=usess.sid;
-		");
-		// @codeCoverageIgnoreStart
-		if (!$sql->query_raw($session_view)) {
-			$msg = "Cannot create v_oauth view:" . $sql->errmsg;
-			$log->error("ZapOAuth: $msg");
-			throw new OAuthStoreError($msg);
-		}
-		// @codeCoverageIgnoreEnd
+		";
+		$sql->query_raw($session_view);
+
 		$log->info("ZapOAuth: Table created.");
 	}
 
@@ -406,8 +390,8 @@ class OAuthManage extends AuthManage {
 	/**
 	 * Add new user after successful authorization.
 	 *
-	 * Only call from OAuthRoute::route_byway_callback and not from
-	 * anywhere else. For testing, use accessor in subclasses.
+	 * Only call from OAuthRouteDefault::route_byway_callback and not
+	 * from anywhere else. For testing, use accessor in subclasses.
 	 *
 	 * @param string $service_type '10' for OAuth1, '20' for OAuth2.
 	 * @param string $service_name Service nickname, e.g. 'github'.

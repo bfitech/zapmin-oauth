@@ -80,6 +80,9 @@ class OAuthManagePatched extends OAuthManage {
 
 }
 
+/**
+ * OAuthRoute test.
+ */
 class OAuthRouteTest extends TestCase {
 
 	public static $logger;
