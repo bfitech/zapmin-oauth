@@ -53,6 +53,17 @@ class OAuthManage extends AuthManage {
 	public $callback_fail_redirect = null;
 
 	/**
+	 * Constructor.
+	 *
+	 * @param Admin $admin Admin instance.
+	 * @param Logger $logger Logger instance.
+	 */
+	public function __construct(Admin $admin, Logger $logger=null) {
+		parent::__construct($admin, $logger);
+		$this->oauth_create_table();
+	}
+
+	/**
 	 * Create OAuth session table.
 	 *
 	 * This table is not for authentication since it's done by
@@ -65,8 +76,9 @@ class OAuthManage extends AuthManage {
 
 		try {
 			$sql->query("SELECT 1 FROM uoauth LIMIT 1");
+			$log->debug("ZapOAuth: Table exists.");
 			return;
-		} catch (SQLError $e) {
+		} catch (SQLError $err) {
 			// no-op
 		}
 
@@ -77,7 +89,7 @@ class OAuthManage extends AuthManage {
 			// @codeCoverageIgnoreStart
 			if (!$sql->query_raw($drop)) {
 				$msg = "Cannot drop data:" . $sql->errmsg;
-				$log->error("OAuth: $msg");
+				$log->error("ZapOAuth: $msg");
 				throw new OAuthStoreError($msg);
 			}
 			// @codeCoverageIgnoreEnd
@@ -102,7 +114,7 @@ class OAuthManage extends AuthManage {
 		if (!$sql->query_raw($table)) {
 			// @codeCoverageIgnoreStart
 			$msg = "Cannot create uoauth table:" . $sql->errmsg;
-			$log->error("OAuth: $msg");
+			$log->error("ZapOAuth: $msg");
 			throw new OAuthStoreError($msg);
 			// @codeCoverageIgnoreEnd
 		}
@@ -122,10 +134,11 @@ class OAuthManage extends AuthManage {
 		// @codeCoverageIgnoreStart
 		if (!$sql->query_raw($session_view)) {
 			$msg = "Cannot create v_oauth view:" . $sql->errmsg;
-			$log->error("OAuth: $msg");
+			$log->error("ZapOAuth: $msg");
 			throw new OAuthStoreError($msg);
 		}
 		// @codeCoverageIgnoreEnd
+		$log->info("ZapOAuth: Table created.");
 	}
 
 	/**
@@ -136,7 +149,6 @@ class OAuthManage extends AuthManage {
 	 *     current service.
 	 */
 	public function get_oauth_tokens(string $session_token) {
-		$this->oauth_create_table();
 		$sql = self::$admin::$store;
 		$dtnow = $sql->stmt_fragment('datetime', ['delta' => 0]);
 		$stmt = sprintf("
@@ -202,7 +214,7 @@ class OAuthManage extends AuthManage {
 			'url_callback' => $url_callback,
 			'scope' => $scope,                  # 2.0 only
 		];
-		$log->debug("OAuth: Add new service: " . json_encode($conf));
+		$log->debug("ZapOAuth: Add new service: " . json_encode($conf));
 	}
 
 	# super-oauth methods
@@ -399,8 +411,6 @@ class OAuthManage extends AuthManage {
 		string $access_token, string $access_token_secret=null,
 		string $refresh_token=null, array $profile=[]
 	) {
-		$this->oauth_create_table();
-
 		# build passwordless account using obtained uname with uservice
 		# having the form 'oauth%service_type%[%service_name%]
 
@@ -467,7 +477,6 @@ class OAuthManage extends AuthManage {
 	 *     cookie or request header.
 	 */
 	public function get_action_from_session(string $session_token) {
-		$this->oauth_create_table();
 		$tokens = $this->get_oauth_tokens($session_token);
 		if (!$tokens)
 			return null;
