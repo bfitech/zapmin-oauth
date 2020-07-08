@@ -175,8 +175,15 @@ class OAuthRouteDefault extends Route {
 		# always autologin on success
 		$expiration = $admin::$store->time() + $admin->get_expiration();
 		self::$ctrl->set_token_value($session_token);
-		$core->send_cookie($this->token_name, $session_token,
+		$core::send_cookie($this->token_name, $session_token,
 			$expiration, '/');
+		// @todo Use this format on next zapcore.
+		// $core::send_cookie_with_opts(
+		// 	$this->token_name, $session_token, [
+		// 		'path' => '/',
+		// 		'expire' => $expiration,
+		// 		'samesite' => 'Lax',
+		// 	]);
 		$log->debug(sprintf(
 			"ZapOAuth: Set cookie: [%s -> %s].",
 			$this->token_name, $session_token));
