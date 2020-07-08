@@ -18,77 +18,60 @@ class OAuthRouteDev extends OAuthRouteDefault {
 	 * Fake login.
 	 *
 	 * This provides a fake OAuth authentication without actually using
-	 * a real OAuth server. Use this for development purpose only.
+	 * a real OAuth server. Use this for development purposes only.
+	 * `ZAPMIN_OAUTH_DEV` must be defined for this callback to work.
 	 *
-	 * `ZAPMIN_OAUTH_DEV` must be defined. GET request must contain a
-	 * valid email address that's a superstring of OAuth service name.
-	 * User fullname is generated based on this email address.
-	 *
-	 * On success, it redirects to ok URL. On failure, it redirects
-	 * to fail URL with query string containing `code` for supposed
-	 * HTTP code and `errno` for the cause of error. Failure does not
-	 * mirror actual OAuth failure.
+	 * On success, the data section of JSON response contains ok URL to
+	 * redirect to. On failure, the errno is >0 and the data is null.
+	 * Failure does not mirror actual OAuth failure.
 	 *
 	 * @param array $args Router variables exactly the same with those
-	 *     in OAuthRoute::route_byway_auth.
-	 *
-	 * @if TRUE
-	 * @SuppressWarnings(PHPMD.CyclomaticComplexity)
-	 * @SuppressWarnings(PHPMD.NPathComplexity)
-	 * @endif
+	 *     in OAuthRouteDefault::route_byway_auth. For successful fake
+	 *     login, args must contain:
+	 *     - `params`:
+	 *       -  `service_type`: registered service type
+	 *       -  `service_name`: registered service name
+	 *     - `get`:
+	 *       -  `email`: valid email address that's a superstring of
+	 *          `service_name`; username and fullname is generated based
+	 *          on this email address
 	 */
 	public function route_fake_login(array $args) {
 		$core = self::$core;
 		$manage = self::$manage;
+		$redirect_ok = $manage->callback_ok_redirect ?? '/';
 
 		# safeguard so that this won't leak to production
 		if (!defined('ZAPMIN_OAUTH_DEV'))
 			return $core->abort(404);
 
-		$fail_url = $manage->callback_fail_redirect;
-		if (!$fail_url)
-			$fail_url = $core->get_home();
-
-		$fail = function($code, $errno) use($core, $fail_url) {
-			return $core->redirect(
-				$fail_url . "?code=$code&errno=$errno");
-		};
-
 		$service_type = $service_name = null;
 		$params = $args['params'];
 		if (!Common::check_idict($params,
 			['service_type', 'service_name'])
-		) {
-			return $fail(404, OAuthError::SERVICE_UNKNOWN);
-		}
+		)
+			return $core::pj([OAuthError::SERVICE_UNKNOWN], 403);
 		extract($params);
 
 		if (self::$ctrl->get_user_data())
 			# already signed in
-			return $core::pj([1], 401);
+			return $core::pj([0, $redirect_ok]);
 
-		$email = $args['get']['email'] ?? null;
-		if (
-			!$email ||
-			filter_var($email, FILTER_VALIDATE_EMAIL) === false
-		)
-			# invalid email
-			return $fail(403, OAuthError::INCOMPLETE_DATA);
-
-		# validate against oauth provider based on email address, e.g.:
-		# 'you@gmail.com' is valid for 'gmail' service.
-		if (strpos($email, $service_name) === false)
-			return $fail(404, OAuthError::SERVICE_UNKNOWN);
+		$email = $args['get']['email'] ?? '';
+		$errno = $this->check_email($email, $service_name);
+		if ($errno != 0)
+			return $core::pj([$errno], 403);
 
 		if (!$manage->get_permission_instance(
-			$service_type, $service_name))
+			$service_type, $service_name)
+		)
 			# service unknown
-			return $fail(404, OAuthError::SERVICE_UNKNOWN);
+			return $core::pj([OAuthError::SERVICE_UNKNOWN], 403);
 
 		$uname = preg_replace("![^a-z0-9]!", '', $email);
 		$access_token = md5($uname . $email . mt_rand());
-		$access_token_secret = $service_type != '10' ? null :
-			$access_token_secret = "xxx-" . $access_token;
+		$access_token_secret = $service_type != '10'
+			? null : "xxx-" . $access_token;
 		$token = $manage->add_user(
 			$service_type, $service_name,
 			$uname, $access_token, $access_token_secret, null,
@@ -101,7 +84,23 @@ class OAuthRouteDev extends OAuthRouteDefault {
 
 		$core::send_cookie(
 			$this->token_name, $token, time() + (3600 * 6), '/');
-		$core->redirect(($manage->callback_ok_redirect ?? '/'));
+		return $core::pj([0, $redirect_ok]);
+	}
+
+	private function check_email(string $email, string $service_name) {
+		if (
+			!$email ||
+			filter_var($email, FILTER_VALIDATE_EMAIL) === false
+		)
+			# invalid email
+			return OAuthError::INCOMPLETE_DATA;
+
+		# validate against service name, e.g.: 'you@gmail.example.com'
+		# is valid for 'gmail' service.
+		if (strpos($email, $service_name) === false)
+			return OAuthError::SERVICE_UNKNOWN;
+
+		return 0;
 	}
 
 	/**

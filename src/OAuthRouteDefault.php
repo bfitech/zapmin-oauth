@@ -9,7 +9,7 @@ use BFITech\ZapOAuth\OAuthError;
 
 
 /**
- * Default routers.
+ * Default router callbacks.
  *
  * This is sufficient for functional OAuth authentication. See ./demo
  * for usage.

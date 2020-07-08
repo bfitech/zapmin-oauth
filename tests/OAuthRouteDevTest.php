@@ -106,28 +106,14 @@ class OAuthRouteDevTest extends TestCase {
 		if (!defined('ZAPMIN_OAUTH_DEV'))
 			define('ZAPMIN_OAUTH_DEV', 1);
 
-		### response parser, which is much simpler than parser of
-		### OAuthRouteDefault::route response.
-		$pfail = function($_core) {
-			$loc = array_filter($_core::$head, function($ele) {
-				return strpos($ele, 'Location:') !== false;
-			})[0];
-			$loc = explode('?', $loc)[1];
-			parse_str($loc, $out);
-			$code = $out['code'] ?? -1;
-			$errno = $out['errno'] ?? -1;
-			return [$code, $errno];
-		};
-
 		# incomplete data
 		list($zcore, $rdev, $core) = $this->make_zcore();
 		$rdev
 			->request('/oauth/10/github/auth')
 			->route('/oauth/<service_type>/<service_name>/auth',
 				[$zcore, 'route_fake_login']);
-		list($code, $errno) = $pfail($core);
-		$eq($code, 403);
-		$eq($errno, OAuthError::INCOMPLETE_DATA);
+		$eq($core::$code, 403);
+		$eq($core::$errno, OAuthError::INCOMPLETE_DATA);
 
 		# service unknown
 		list($zcore, $rdev, $core) = $this->make_zcore();
@@ -135,9 +121,8 @@ class OAuthRouteDevTest extends TestCase {
 			->request('/oauth/10/github/auth')
 			->route('/oauth/<service_type>/github/auth',
 				[$zcore, 'route_fake_login']);
-		list($code, $errno) = $pfail($core);
-		$eq($code, 404);
-		$eq($errno, OAuthError::SERVICE_UNKNOWN);
+		$eq($core::$code, 403);
+		$eq($core::$errno, OAuthError::SERVICE_UNKNOWN);
 
 		# service unknown
 		list($zcore, $rdev, $core) = $this->make_zcore();
@@ -146,9 +131,8 @@ class OAuthRouteDevTest extends TestCase {
 				['get' => ['email' => 'me@github.io']])
 			->route('/oauth/<service_type>/<service_name>/auth',
 				[$zcore, 'route_fake_login']);
-		list($code, $errno) = $pfail($core);
-		$eq($code, 404);
-		$eq($errno, OAuthError::SERVICE_UNKNOWN);
+		$eq($core::$code, 403);
+		$eq($core::$errno, OAuthError::SERVICE_UNKNOWN);
 
 		# invalid email address
 		list($zcore, $rdev, $core) = $this->make_zcore();
@@ -157,9 +141,8 @@ class OAuthRouteDevTest extends TestCase {
 				['get' => ['email' => 'me+github.io']])
 			->route('/oauth/<service_type>/<service_name>/auth',
 				[$zcore, 'route_fake_login']);
-		list($code, $errno) = $pfail($core);
-		$eq($code, 403);
-		$eq($errno, OAuthError::INCOMPLETE_DATA);
+		$eq($core::$code, 403);
+		$eq($core::$errno, OAuthError::INCOMPLETE_DATA);
 
 		# email address and registered services don't match
 		list($zcore, $rdev, $core) = $this->make_zcore();
@@ -168,9 +151,8 @@ class OAuthRouteDevTest extends TestCase {
 				['get' => ['email' => 'me@github.io']])
 			->route('/oauth/<service_type>/<service_name>/auth',
 				[$zcore, 'route_fake_login']);
-		list($code, $errno) = $pfail($core);
-		$eq($code, 404);
-		$eq($errno, OAuthError::SERVICE_UNKNOWN);
+		$eq($core::$code, 403);
+		$eq($core::$errno, OAuthError::SERVICE_UNKNOWN);
 
 		# success
 		list($zcore, $rdev, $core) = $this->make_zcore();
@@ -179,14 +161,15 @@ class OAuthRouteDevTest extends TestCase {
 				['get' => ['email' => 'me@tumblr.xyz']])
 			->route('/oauth/<service_type>/<service_name>/auth',
 				[$zcore, 'route_fake_login']);
-		$eq($core::$code, 301);
-		$eq($core::$head[0], 'Location: /ok');
+		$eq($core::$code, 200);
+		$eq($core::$errno, 0);
+		$eq($core::$data, '/ok');
 
 		### get token value from cookie
 		$token_name = 'test-zapmin-oauth-dev';
 		$token_val = $_COOKIE[$token_name];
 
-		# cannot sign in if valid cookie is set
+		# already signed in
 		list($zcore, $rdev, $core) = $this->make_zcore();
 		$rdev
 			->request('/oauth/20/tumblr/auth', 'GET', [
@@ -196,7 +179,9 @@ class OAuthRouteDevTest extends TestCase {
 			])
 			->route('/oauth/<service_type>/<service_name>/auth',
 				[$zcore, 'route_fake_login']);
-		$eq($core::$code, 401);
+		$eq($core::$code, 200);
+		$eq($core::$errno, 0);
+		$eq($core::$data, '/ok');
 
 		# get fake status
 		list($zcore, $rdev, $core) = $this->make_zcore();
