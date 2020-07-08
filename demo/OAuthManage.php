@@ -42,6 +42,12 @@ class OAuthManage extends \BFITech\ZapAdmin\OAuthManage {
 		return $profile;
 	}
 
+	/**
+	 * Fetch Github profile.
+	 *
+	 * @SuppressWarnings(PHPMD.CyclomaticComplexity)
+	 * @SuppressWarnings(PHPMD.NPathComplexity)
+	 */
 	private function fetch_profile_github($oauth_action) {
 		# github needs UA
 		$headers = ['User-Agent: curl/7.47.0'];
@@ -120,6 +126,11 @@ class OAuthManage extends \BFITech\ZapAdmin\OAuthManage {
 		return $profile;
 	}
 
+	/**
+	 * Profile fetcher implementation.
+	 *
+	 * @SuppressWarnings(PHPMD.UnusedFormalParameter)
+	 */
 	public function fetch_profile(
 		$oauth_action, $service_type, $service_name, $kwargs=[]
 	) {
@@ -133,9 +144,9 @@ class OAuthManage extends \BFITech\ZapAdmin\OAuthManage {
 	}
 
 	public function finetune_permission($args, $perm) {
-		# to obtain google refresh token, we needs to provide
-		# `access_type=offline&prompt=consent`
-		# see: http://archive.fo/L3bXg#selection-1259.0-1279.18
+		# To obtain google refresh token, we need to provide
+		# `access_type=offline&prompt=consent`.
+		# See: http://archive.fo/L3bXg#selection-1259.0-1279.18
 		if ($args['params']['service_name'] == 'google') {
 			$perm->access_token_url_extra_params = [
 				'access_type' => 'offline',
@@ -146,4 +157,3 @@ class OAuthManage extends \BFITech\ZapAdmin\OAuthManage {
 	}
 
 }
-

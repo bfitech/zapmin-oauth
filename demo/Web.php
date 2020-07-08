@@ -5,6 +5,7 @@ namespace Demo;
 
 
 use BFITech\ZapCore\Common;
+use BFITech\ZapCore\Header;
 use BFITech\ZapCore\Config;
 use BFITech\ZapCore\ConfigError;
 use BFITech\ZapCore\Logger;
@@ -31,7 +32,7 @@ class Web {
 	private function init() {
 		$datadir = __DIR__ . '/data';
 		if (!is_dir($datadir) && false === @mkdir($datadir, 0755))
-			die(sprintf(
+			Header::halt(sprintf(
 				"User '%s' cannot create directory '%s'.</pre>",
 				Common::exec('whoami')[0], $datadir));
 
@@ -54,7 +55,7 @@ class Web {
 		try {
 			$check_table = (bool)$cnf->get('check_table');
 		} catch(ConfigError $err) {
-			$cnf->add('check_table', true); 
+			$cnf->add('check_table', true);
 		}
 
 		# admin

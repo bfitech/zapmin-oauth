@@ -10,9 +10,7 @@ use BFITech\ZapCore\Common;
 /**
  * OAuth1.0 permission class.
  *
- * @if TRUE
  * @SuppressWarnings(PHPMD.LongVariable)
- * @endif
  */
 class OAuth10Permission extends OAuthCommon {
 

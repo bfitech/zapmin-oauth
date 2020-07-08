@@ -40,9 +40,7 @@ use BFITech\ZapOAuth\OAuth20Action;
  * http_client_custom on your super-oauth, with the exact same args with
  * those in Common::http_client.
  *
- * @if TRUE
  * @SuppressWarnings(PHPMD.LongVariable)
- * @endif
  */
 class OAuthManage extends AuthManage {
 
@@ -290,9 +288,7 @@ class OAuthManage extends AuthManage {
 	 * }
 	 * @endcode
 	 *
-	 * @if TRUE
 	 * @SuppressWarnings(PHPMD.UnusedFormalParameter)
-	 * @endif
 	 */
 	public function finetune_permission(
 		array $args, OAuthCommon $oauth_perm
@@ -376,9 +372,7 @@ class OAuthManage extends AuthManage {
 	 *     @endcode
 	 * @codeCoverageIgnore
 	 *
-	 * @if TRUE
 	 * @SuppressWarnings(PHPMD.UnusedFormalParameter)
-	 * @endif
 	 */
 	public function fetch_profile(
 		OAuthCommon $oauth_action,
