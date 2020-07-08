@@ -88,7 +88,7 @@ EOD;
 	/**
 	 * GET: /services
 	 */
-	public function route_services($args) {
+	public function route_services($args=null) {
 		self::$core->static_file($this->srvfile);
 	}
 }
