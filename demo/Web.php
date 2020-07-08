@@ -12,6 +12,7 @@ use BFITech\ZapCore\Router;
 use BFITech\ZapStore\SQLite3;
 use BFITech\ZapAdmin\Admin;
 use BFITech\ZapAdmin\AuthCtrl;
+use BFITech\ZapAdminDev\OAuthRouteDev;
 
 
 /**
@@ -19,14 +20,15 @@ use BFITech\ZapAdmin\AuthCtrl;
  */
 class Web {
 
-	private $zcore;
+	private $zcore_real;
+	private $zcore_fake;
 
 	public function __construct() {
-		$this->init_zcore();
+		$this->init();
 		$this->run();
 	}
 
-	private function init_zcore() {
+	private function init() {
 		$datadir = __DIR__ . '/data';
 		if (!is_dir($datadir) && false === @mkdir($datadir, 0755))
 			die(sprintf(
@@ -35,7 +37,8 @@ class Web {
 
 		$log = new Logger(
 			Logger::DEBUG, $datadir . '/demo.log');
-		$core = (new Router)->config('logger', $log);
+		$core = (new Router)
+			->config('logger', $log);
 		$sql = new SQLite3(
 			['dbname' => $datadir . '/demo.sq3'], $log);
 
@@ -84,37 +87,45 @@ class Web {
 		foreach ($services as $service)
 			call_user_func_array([$manage, 'add_service'], $service);
 
-		$this->zcore = new OAuthRoute($core, $ctrl, $manage);
-	}
-
-	private function make_routes() {
-		return [
-			['/',
-				'route_home'],
-			['/status',
-				'route_status'],
-			['/refresh',
-				'route_refresh', 'POST'],
-			['/logout',
-				'route_logout', ['GET', 'POST']],
-			['/byway/oauth/<service_type>/<service_name>/auth',
-				'route_byway_auth', 'POST'],
-			['/byway/oauth/<service_type>/<service_name>/callback',
-				'route_byway_callback'],
-			['/static/{path}',
-				'route_static']
-		];
+		# real
+		$this->zcore_real = new OAuthRoute($core, $ctrl, $manage);
+		$this->zcore_real->srvfile = $srvfile;
+		# fake
+		define('ZAPMIN_OAUTH_DEV', 1);
+		$this->zcore_fake = new OAuthRouteDev($core, $ctrl, $manage);
 	}
 
 	private function run() {
-		$zcore = $this->zcore;
-		foreach ($this->make_routes() as $route) {
-			$route[1] = [$zcore, $route[1]];
-			if (count($route) < 3)
-				$route[] = 'GET';
-			if (count($route) < 4)
-				$route[] = false;
-			call_user_func_array([$zcore, 'route'], $route);
+		$real = $this->zcore_real;
+		$fake = $this->zcore_fake;
+
+		foreach ([
+			[$real, '/',
+				'route_home'],
+			[$real, '/status',
+				'route_status'],
+			[$real, '/refresh',
+				'route_refresh', 'POST'],
+			[$real, '/logout',
+				'route_logout', ['GET', 'POST']],
+			[$real, '/byway/oauth/<service_type>/<service_name>/auth',
+				'route_byway_auth', 'POST'],
+			[$real,
+				'/byway/oauth/<service_type>/<service_name>/callback',
+				'route_byway_callback'],
+			[$real, '/static/{path}',
+				'route_static'],
+			[$real, '/services',
+				'route_services'],
+			[$fake, '/fake_login/<service_type>/<service_name>',
+				'route_fake_login'],
+		] as $rti) {
+			if (count($rti) < 4)
+				$rti[] = ['GET'];
+			if (count($rti) < 5)
+				$rti[] = false;
+			list($zcore, $path, $cbname, $methods, $is_raw) = $rti;
+			$zcore->route($path, [$zcore, $cbname], $methods, $is_raw);
 		}
 	}
 

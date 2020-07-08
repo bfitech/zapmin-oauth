@@ -1,14 +1,35 @@
 
-#wrap{
+#wrap {
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	height: 90vh;
 	font-family: monospace;
 }
-#box{
-	height: 18em;
+#box {
+	height: 26em;
 	padding: 8px 16px;
 	border: 1px solid rgba(0, 0, 0, .3);
 	width: 400px;
+	position: relative;
+}
+hr {
+	margin: .5em 0;
+	padding: 0;
+	border: none;
+	height: 1px;
+	border-top: 1px solid rgba(0, 0, 0, .3);
+}
+.real button,
+.fake input {
+	width: 240px;
+	box-sizing: border-box;
+	margin-right: 1em;
+}
+
+#srv{
+	position: absolute;
+	bottom: .5em;
+	right: .5em;
+	text-align: right;
 }

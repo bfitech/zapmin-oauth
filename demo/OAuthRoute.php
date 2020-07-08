@@ -10,6 +10,8 @@ namespace Demo;
  */
 class OAuthRoute extends \BFITech\ZapAdmin\OAuthRouteDefault {
 
+	public $srvfile;
+
 	/**
 	 * GET: /
 	 */
@@ -21,7 +23,9 @@ class OAuthRoute extends \BFITech\ZapAdmin\OAuthRouteDefault {
 <!doctype html>
 <html>
 <head>
-	<title>Test OAuth Client</title>
+	<meta name=viewport
+		content='width=device-width, initial-scale=1.0'>
+	<title>zapmin-oauth demo</title>
 	<link href=./static/style.css rel=stylesheet>
 </head>
 <body>
@@ -81,4 +85,10 @@ EOD;
 			__DIR__ . '/static/' . $args['params']['path']);
 	}
 
+	/**
+	 * GET: /services
+	 */
+	public function route_services($args) {
+		self::$core->static_file($this->srvfile);
+	}
 }
