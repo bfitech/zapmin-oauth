@@ -49,11 +49,11 @@ EOD;
 	 */
 	public function route_logout() {
 		$core = self::$core;
-		$udata = self::$ctrl->get_user_data();
-		if (!$udata)
-			return $core::pj([1, []], 403);
-		self::$ctrl->logout();
-		return $core::pj([0, []]);
+		$retval = self::$ctrl->logout();
+		if ($retval[0] === 0)
+			$core->send_cookie(
+				$this->token_name, '', time() - (3600 * 48), '/');
+		return $core->pj($retval);
 	}
 
 	/**
