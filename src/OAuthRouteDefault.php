@@ -14,7 +14,7 @@ use BFITech\ZapOAuth\OAuthError;
  * This is sufficient for functional OAuth authentication. See ./demo
  * for usage.
  */
-class OAuthRouteDefault extends Route {
+class OAuthRouteDefault extends RouteAdmin {
 
 	/**
 	 * Route callback for OAuth* token request URL generator.
