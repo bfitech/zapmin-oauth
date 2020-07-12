@@ -1,9 +1,6 @@
 <?php
 
 
-require_once(__DIR__ . '/RoutingDevPatched.php');
-
-
 use BFITech\ZapCore\Logger;
 use BFITech\ZapStore\SQLite3;
 use BFITech\ZapAdmin\Admin;
@@ -11,6 +8,7 @@ use BFITech\ZapAdmin\AuthCtrl;
 use BFITech\ZapAdmin\OAuthManage;
 use BFITech\ZapAdminDev\OAuthRouteDev;
 use BFITech\ZapOAuth\OAuthError;
+use BFITech\ZapCoreDev\RoutingDev;
 use BFITech\ZapCoreDev\TestCase;
 
 
@@ -41,7 +39,7 @@ class OAuthRouteDevTest extends TestCase {
 	private function make_zcore() {
 		### RoutingDev instance. Renew every time after mock request is
 		### complete. Do not reuse.
-		$rdev = new RoutingDevPatched;
+		$rdev = new RoutingDev;
 
 		$log = self::$logger;
 		$core = $rdev::$core
@@ -85,9 +83,6 @@ class OAuthRouteDevTest extends TestCase {
 
 		### OAuthRouteDev instance.
 		$zcore = new OAuthRouteDev($core, $ctrl, $manage);
-
-		### Set $rdev::$zcore so we can do request-route chaining.
-		$rdev::$zcore = $zcore;
 
 		return [$zcore, $rdev, $core];
 	}

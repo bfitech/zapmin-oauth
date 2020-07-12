@@ -2,7 +2,6 @@
 
 
 require_once(__DIR__ . '/OAuthFixture.php');
-require_once(__DIR__ . '/RoutingDevPatched.php');
 
 
 use BFITech\ZapCore\Logger;
@@ -14,31 +13,9 @@ use BFITech\ZapAdmin\OAuthManage;
 use BFITech\ZapAdmin\OAuthRouteDefault;
 use BFITech\ZapOAuth\OAuthCommon;
 use BFITech\ZapOAuth\OAuthError;
+use BFITech\ZapCoreDev\RoutingDev;
 use BFITech\ZapCoreDev\TestCase;
 
-
-/**
- * OAuthRouteDefault with mock http client.
- */
-class OAuthRouteDefaultPatched extends OAuthRouteDefault {
-
-	/** Service type, for fixture selection. */
-	public static $service_type;
-
-	/**
-	 * Fake HTTP client.
-	 *
-	 * Not to be confused with OAuthManage::http_client_custom which is
-	 * used internally by OAuth*{Action,Permission} classes. This is for
-	 * simulating a workflow on the browser.
-	 */
-	public function fake_http_client($kwargs) {
-		if (self::$service_type == '10')
-			return ServiceFixture::oauth10($kwargs);
-		return ServiceFixture::oauth20($kwargs);
-	}
-
-}
 
 /**
  * OAuthManage with mock http client and other mock methods.
@@ -110,10 +87,23 @@ class OAuthRouteTest extends TestCase {
 		return explode(' ', $location_header[0])[1];
 	}
 
-	private function make_dev_patched() {
+	/**
+	 * Fake HTTP client.
+	 *
+	 * Not to be confused with OAuthManage::http_client_custom which is
+	 * used internally by OAuth*{Action,Permission} classes. This is for
+	 * simulating a workflow on the browser.
+	 */
+	private static function fake_http_client($service_type, $kwargs) {
+		if ($service_type == '10')
+			return ServiceFixture::oauth10($kwargs);
+		return ServiceFixture::oauth20($kwargs);
+	}
+
+	private function make_zcore() {
 		### RoutingDev instance. Renew every time after mock request is
 		### complete. Do not reuse.
-		$rdev = new RoutingDevPatched;
+		$rdev = new RoutingDev;
 
 		$log = self::$logger;
 		$core = $rdev::$core
@@ -141,7 +131,7 @@ class OAuthRouteTest extends TestCase {
 	}
 
 	private function make_zcore_10() {
-		list($rdev, $ctrl, $manage) = $this->make_dev_patched();
+		list($rdev, $ctrl, $manage) = $this->make_zcore();
 		$core = $rdev::$core;
 
 		# Add services.
@@ -164,18 +154,13 @@ class OAuthRouteTest extends TestCase {
 		$manage->callback_fail_redirect = 'http://localhost/fail';
 		$manage::$service_type = '10';
 
-		### OAuthRouteDefault instance.
-		$zcore = new OAuthRouteDefaultPatched($core, $ctrl, $manage);
-		$zcore::$service_type = '10';
-
-		### Set $rdev::$zcore so we can do request-route chaining.
-		$rdev::$zcore = $zcore;
+		$zcore = new OAuthRouteDefault($core, $ctrl, $manage);
 
 		return [$zcore, $rdev, $core];
 	}
 
 	private function make_zcore_20() {
-		list($rdev, $ctrl, $manage) = $this->make_dev_patched();
+		list($rdev, $ctrl, $manage) = $this->make_zcore();
 		$core = $rdev::$core;
 
 		# Add service.
@@ -190,12 +175,7 @@ class OAuthRouteTest extends TestCase {
 		$manage->callback_ok_redirect = 'http://localhost/ok';
 		$manage::$service_type = '20';
 
-		### OAuthRouteDefault instance.
-		$zcore = new OAuthRouteDefaultPatched($core, $ctrl, $manage);
-		$zcore::$service_type = '20';
-
-		### Set $rdev::$zcore so we can do request-route chaining.
-		$rdev::$zcore = $zcore;
+		$zcore = new OAuthRouteDefault($core, $ctrl, $manage);
 
 		return [$zcore, $rdev, $core];
 	}
@@ -248,7 +228,7 @@ class OAuthRouteTest extends TestCase {
 		$eq(0, strpos($auth_url, 'http://example.org/10/auth'));
 
 		# open access token URL
-		$access = $zcore->fake_http_client([
+		$access = self::fake_http_client('10', [
 			'method' => 'GET',
 			'url' => $auth_url,
 		]);
@@ -346,7 +326,7 @@ class OAuthRouteTest extends TestCase {
 		$sm(0, strpos($auth_url, 'http://reddit.example.org/20/auth'));
 
 		# open access token URL
-		$access = $zcore->fake_http_client([
+		$access = self::fake_http_client('20', [
 			'method' => 'GET',
 			'url' => $auth_url,
 		]);

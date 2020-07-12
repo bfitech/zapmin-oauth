@@ -108,7 +108,7 @@ INPUT                  = src dev README.md \
                          vendor/bfitech/zapcore/src/Router.php \
                          vendor/bfitech/zapstore/src/SQLError.php \
                          vendor/bfitech/zapmin/src/Error.php \
-                         vendor/bfitech/zapmin/src/Route.php \
+                         vendor/bfitech/zapmin/src/RouteAdmin.php \
                          vendor/bfitech/zapmin/src/AuthCtrl.php \
                          vendor/bfitech/zapmin/src/AuthManage.php
 INPUT_ENCODING         = UTF-8
