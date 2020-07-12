@@ -86,7 +86,10 @@ EOD;
 	 */
 	public function route_static($args) {
 		return self::$core->static_file(
-			__DIR__ . '/static/' . $args['params']['path']);
+			__DIR__ . '/static/' . $args['params']['path'], [
+				'cache' => 30,
+				'reqheaders' => $args['header'],
+			]);
 	}
 
 	/**
