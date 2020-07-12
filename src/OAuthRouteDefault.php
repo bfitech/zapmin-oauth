@@ -166,27 +166,24 @@ class OAuthRouteDefault extends RouteAdmin {
 		$uname = $profile['uname'];
 
 		# add new user
-		$session_token = $manage->add_user(
+		$token = $manage->add_user(
 			$service_type, $service_name,
 			$uname, $access_token, $access_token_secret,
 			$refresh_token, $profile
 		);
 
 		# always autologin on success
-		$expiration = $admin::$store->time() + $admin->get_expiration();
-		self::$ctrl->set_token_value($session_token);
-		$core::send_cookie($this->token_name, $session_token,
-			$expiration, '/');
-		// @todo Use this format on next zapcore.
-		// $core::send_cookie_with_opts(
-		// 	$this->token_name, $session_token, [
-		// 		'path' => '/',
-		// 		'expire' => $expiration,
-		// 		'samesite' => 'Lax',
-		// 	]);
+		$expires = $admin::$store->time() + $admin->get_expiration();
+		self::$ctrl->set_token_value($token);
+		$core::send_cookie_with_opts($this->token_name, $token, [
+			'path' => '/',
+			'expires' => $expires,
+			'httponly' => true,
+			'samesite' => 'Lax',
+		]);
 		$log->debug(sprintf(
 			"ZapOAuth: Set cookie: [%s -> %s].",
-			$this->token_name, $session_token));
+			$this->token_name, $token));
 
 		# success
 		return $this->_route_byway_ok();

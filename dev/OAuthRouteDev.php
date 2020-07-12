@@ -80,16 +80,16 @@ class OAuthRouteDev extends OAuthRouteDefault {
 				'email' => $email,
 			]
 		);
-		self::$ctrl->set_token_value($token);
 
-		$core::send_cookie(
-			$this->token_name, $token, time() + (3600 * 6), '/');
-		// @todo Use this format on next zapcore upgrade.
-		// $core::send_cookie_with_opts($this->token_name, $token, [
-		// 	'path' => '/',
-		// 	'expires' => time() + (3600 * 6),
-		// 	'samesite' => 'Lax',
-		// ]);
+		self::$ctrl->set_token_value($token);
+		$core::send_cookie_with_opts(
+			$this->token_name, $token, [
+				'path' => '/',
+				'expires' => time() + 3600,
+				'httponly' => true,
+				'samesite' => 'Lax',
+			]);
+
 		return $core::pj([0, $redirect_ok]);
 	}
 

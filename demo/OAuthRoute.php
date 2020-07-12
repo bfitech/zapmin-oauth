@@ -51,9 +51,13 @@ EOD;
 		$core = self::$core;
 		$retval = self::$ctrl->logout();
 		if ($retval[0] === 0)
-			$core->send_cookie(
-				$this->token_name, '', time() - (3600 * 48), '/');
-		return $core->pj($retval);
+			$core::send_cookie_with_opts($this->token_name, '', [
+				'path' => '/',
+				'expires' => 1,
+				'httponly' => true,
+				'samesite' => 'Lax',
+			]);
+		return $core::pj($retval);
 	}
 
 	/**
