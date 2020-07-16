@@ -18,7 +18,9 @@
   },
   "suggest": {
     "bfitech/zapstore-mysql": "Use MySQL as database backend.",
-    "bfitech/zapstore-pgsql": "Use PostgreSQL as database backend."
+    "bfitech/zapstore-pgsql": "Use PostgreSQL as database backend.",
+    "bfitech/zapstore-redis": "Use Redis as additional backend.",
+    "bfitech/zapstore-predis": "Use Predis as additional backend."
   },
   "autoload": {
     "psr-4": {
