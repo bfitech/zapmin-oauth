@@ -81,7 +81,6 @@ class OAuthRouteDev extends OAuthRouteDefault {
 			]
 		);
 
-		self::$ctrl->set_token_value($token);
 		$core::send_cookie_with_opts(
 			$this->token_name, $token, [
 				'path' => '/',
