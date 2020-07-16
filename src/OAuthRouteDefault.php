@@ -172,9 +172,8 @@ class OAuthRouteDefault extends RouteAdmin {
 			$refresh_token, $profile
 		);
 
-		# always autologin on success
+		# send valid cookie on success
 		$expires = $admin::$store->time() + $admin->get_expiration();
-		self::$ctrl->set_token_value($token);
 		$core::send_cookie_with_opts($this->token_name, $token, [
 			'path' => '/',
 			'expires' => $expires,
