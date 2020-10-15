@@ -60,14 +60,14 @@ class OAuthManage extends AuthManage {
 	 *   - (bool)check_table: Check table existence.
 	 *
 	 * @param string $key Config key name.
-	 * @param string $val Config value.
+	 * @param any $val Config value.
 	 * @return OAuthManage Instance of this class for chaining.
 	 * @throws BFITech.ZapStore.SQLError on table creation failure.
 	 */
-	public function config(string $key, string $val=null) {
+	public function config(string $key, $val=null) {
 		switch ($key) {
 			case 'check_table':
-				if ($val)
+				if ((bool)$val)
 					$this->create_table();
 				break;
 		}
