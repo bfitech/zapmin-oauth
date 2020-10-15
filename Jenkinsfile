@@ -9,7 +9,20 @@ pipeline {
                 branch 'master'
             }
             steps {
-                sh 'docker-phpunit -u 7.0 7.4'
+                sh 'docker-phpunit 7.0 7.4'
+            }
+            post {
+                success {
+                    sh 'jenkins-postproc'
+                }
+            }
+        }
+        stage('release') {
+            when {
+                tag '*'
+            }
+            steps {
+                sh 'docker-phpunit 7.0 7.4'
             }
             post {
                 success {
